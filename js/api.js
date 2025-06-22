@@ -1,453 +1,356 @@
-// API so'rovlari uchun yordamchi funksiyalar
+// API Configuration and Helper Functions
+// Maktab Boshqaruv Tizimi - API
 
-// Backend URL konfiguratsiyasi
-const API_BASE_URL = 'http://localhost:8000'; // Bu yerda haqiqiy backend URL ni kiriting
+// API Configuration
+const API_CONFIG = {
+    BASE_URL: 'https://islomjonovabdulazim-toshmi-backend-ac2b.twc1.net',
+    VERSION: 'v1',
+    TIMEOUT: 30000, // 30 seconds
+    RETRY_COUNT: 3,
+    RETRY_DELAY: 1000 // 1 second
+};
 
-// API so'rovlari sinfi
-class ApiClient {
-    constructor() {
-        this.baseURL = API_BASE_URL;
-        this.token = localStorage.getItem('admin_token');
+// HTTP Status Codes
+const HTTP_STATUS = {
+    OK: 200,
+    CREATED: 201,
+    NO_CONTENT: 204,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    INTERNAL_SERVER_ERROR: 500
+};
+
+// API Error Types
+const API_ERRORS = {
+    NETWORK_ERROR: 'NETWORK_ERROR',
+    TIMEOUT_ERROR: 'TIMEOUT_ERROR',
+    AUTH_ERROR: 'AUTH_ERROR',
+    SERVER_ERROR: 'SERVER_ERROR',
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    NOT_FOUND_ERROR: 'NOT_FOUND_ERROR'
+};
+
+// Global API state
+let authToken = localStorage.getItem('authToken');
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+/**
+ * Set authentication token
+ * @param {string} token - JWT token
+ */
+function setAuthToken(token) {
+    authToken = token;
+    localStorage.setItem('authToken', token);
+}
+
+/**
+ * Clear authentication token
+ */
+function clearAuthToken() {
+    authToken = null;
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+}
+
+/**
+ * Get authentication token
+ * @returns {string|null} JWT token
+ */
+function getAuthToken() {
+    return authToken || localStorage.getItem('authToken');
+}
+
+/**
+ * Check if user is authenticated
+ * @returns {boolean} Authentication status
+ */
+function isAuthenticated() {
+    return !!getAuthToken();
+}
+
+/**
+ * Set current user data
+ * @param {Object} user - User object
+ */
+function setCurrentUser(user) {
+    currentUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(user));
+}
+
+/**
+ * Get current user data
+ * @returns {Object} User object
+ */
+function getCurrentUser() {
+    return currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
+}
+
+/**
+ * Create request headers
+ * @param {Object} additionalHeaders - Additional headers
+ * @returns {Object} Headers object
+ */
+function createHeaders(additionalHeaders = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...additionalHeaders
+    };
+
+    const token = getAuthToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Tokenni o'rnatish
-    setToken(token) {
-        this.token = token;
-        if (token) {
-            localStorage.setItem('admin_token', token);
-        } else {
-            localStorage.removeItem('admin_token');
-        }
+    return headers;
+}
+
+/**
+ * Create full URL
+ * @param {string} endpoint - API endpoint
+ * @returns {string} Full URL
+ */
+function createUrl(endpoint) {
+    // Remove leading slash if present
+    endpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    return `${API_CONFIG.BASE_URL}/${endpoint}`;
+}
+
+/**
+ * Handle API response
+ * @param {Response} response - Fetch response
+ * @returns {Promise<any>} Parsed response data
+ */
+async function handleResponse(response) {
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    
+    let data;
+    try {
+        data = isJson ? await response.json() : await response.text();
+    } catch (error) {
+        throw new APIError('Response parsing failed', API_ERRORS.SERVER_ERROR, response.status);
     }
 
-    // So'rov headerlarini olish
-    getHeaders() {
-        const headers = {
-            'Content-Type': 'application/json',
-        };
-
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
-
-        return headers;
-    }
-
-    // Asosiy so'rov funksiyasi
-    async request(endpoint, options = {}) {
-        const url = `${this.baseURL}${endpoint}`;
-        const config = {
-            headers: this.getHeaders(),
-            ...options
-        };
-
-        try {
-            const response = await fetch(url, config);
-            
-            // Token yaroqsiz bo'lsa
-            if (response.status === 401) {
-                this.setToken(null);
+    if (!response.ok) {
+        // Handle specific HTTP status codes
+        switch (response.status) {
+            case HTTP_STATUS.UNAUTHORIZED:
+                clearAuthToken();
                 window.location.href = 'login.html';
-                return;
-            }
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || 'So\'rov bajarilmadi');
-            }
-
-            return data;
-        } catch (error) {
-            console.error('API xatosi:', error);
-            throw error;
+                throw new APIError(data.message || 'Avtorizatsiya talab qilinadi', API_ERRORS.AUTH_ERROR, response.status);
+            
+            case HTTP_STATUS.FORBIDDEN:
+                throw new APIError(data.message || 'Ruxsat berilmagan', API_ERRORS.AUTH_ERROR, response.status);
+            
+            case HTTP_STATUS.NOT_FOUND:
+                throw new APIError(data.message || 'Ma\'lumot topilmadi', API_ERRORS.NOT_FOUND_ERROR, response.status);
+            
+            case HTTP_STATUS.BAD_REQUEST:
+                throw new APIError(data.message || 'Noto\'g\'ri so\'rov', API_ERRORS.VALIDATION_ERROR, response.status, data.errors);
+            
+            default:
+                throw new APIError(data.message || 'Server xatosi', API_ERRORS.SERVER_ERROR, response.status);
         }
     }
 
-    // GET so'rovi
-    async get(endpoint) {
-        return this.request(endpoint, { method: 'GET' });
-    }
+    return data;
+}
 
-    // POST so'rovi
-    async post(endpoint, data) {
-        return this.request(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // PUT so'rovi
-    async put(endpoint, data) {
-        return this.request(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // PATCH so'rovi
-    async patch(endpoint, data) {
-        return this.request(endpoint, {
-            method: 'PATCH',
-            body: JSON.stringify(data)
-        });
-    }
-
-    // DELETE so'rovi
-    async delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
-    }
-
-    // Fayl yuklash
-    async uploadFile(endpoint, file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const url = `${this.baseURL}${endpoint}`;
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': this.token ? `Bearer ${this.token}` : undefined
-            },
-            body: formData
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Fayl yuklanmadi');
-        }
-
-        return response.json();
+/**
+ * Custom API Error class
+ */
+class APIError extends Error {
+    constructor(message, type, status, details = null) {
+        super(message);
+        this.name = 'APIError';
+        this.type = type;
+        this.status = status;
+        this.details = details;
     }
 }
 
-// API mijoz yaratish
-const api = new ApiClient();
-
-// Auth API funksiyalari
-const AuthAPI = {
-    async login(phone, password, role = 'admin') {
-        return api.post('/auth/login', { phone, password, role });
-    },
-
-    async logout() {
-        return api.post('/auth/logout', {});
-    },
-
-    async getMe() {
-        return api.get('/auth/me');
-    },
-
-    async changePassword(currentPassword, newPassword) {
-        return api.post('/auth/change-password', {
-            current_password: currentPassword,
-            new_password: newPassword
-        });
+/**
+ * Retry function for failed requests
+ * @param {Function} fn - Function to retry
+ * @param {number} retries - Number of retries
+ * @param {number} delay - Delay between retries
+ * @returns {Promise<any>} Result of successful call
+ */
+async function retry(fn, retries = API_CONFIG.RETRY_COUNT, delay = API_CONFIG.RETRY_DELAY) {
+    try {
+        return await fn();
+    } catch (error) {
+        if (retries > 0 && error.type === API_ERRORS.NETWORK_ERROR) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return retry(fn, retries - 1, delay * 2); // Exponential backoff
+        }
+        throw error;
     }
-};
+}
 
-// Users API funksiyalari
-const UsersAPI = {
-    async getUsers(role = null, page = 1, size = 20) {
-        const params = new URLSearchParams();
-        if (role) params.append('role', role);
-        params.append('page', page.toString());
-        params.append('size', size.toString());
-        
-        return api.get(`/admin/users?${params}`);
-    },
+/**
+ * Main API call function
+ * @param {string} endpoint - API endpoint
+ * @param {Object} options - Request options
+ * @returns {Promise<any>} API response data
+ */
+async function apiCall(endpoint, options = {}) {
+    const {
+        method = 'GET',
+        data = null,
+        headers: additionalHeaders = {},
+        timeout = API_CONFIG.TIMEOUT,
+        retryCount = API_CONFIG.RETRY_COUNT,
+        ...fetchOptions
+    } = options;
 
-    async getUser(userId) {
-        return api.get(`/admin/users/${userId}`);
-    },
+    const url = createUrl(endpoint);
+    const headers = createHeaders(additionalHeaders);
 
-    async createUser(userData) {
-        return api.post('/admin/users', userData);
-    },
+    const requestOptions = {
+        method,
+        headers,
+        ...fetchOptions
+    };
 
-    async updateUser(userId, userData) {
-        return api.patch(`/admin/users/${userId}`, userData);
-    },
-
-    async deleteUser(userId) {
-        return api.delete(`/admin/users/${userId}`);
-    },
-
-    async changeUserPassword(userId, newPassword) {
-        return api.patch(`/admin/users/${userId}/password`, {
-            new_password: newPassword
-        });
-    },
-
-    async resetUserPassword(userId) {
-        return api.post(`/admin/users/${userId}/reset-password`);
+    // Add body for POST, PUT, PATCH requests
+    if (data && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+        if (data instanceof FormData) {
+            // Remove Content-Type header for FormData (browser sets it with boundary)
+            delete headers['Content-Type'];
+            requestOptions.body = data;
+        } else {
+            requestOptions.body = JSON.stringify(data);
+        }
     }
-};
 
-// Students API funksiyalari
-const StudentsAPI = {
-    async getStudents() {
-        return api.get('/admin/students');
-    },
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    requestOptions.signal = controller.signal;
 
-    async createStudent(studentData) {
-        return api.post('/admin/students', studentData);
-    },
-
-    async enrollStudent(studentId, groupId) {
-        return api.post('/admin/students/enroll', {
-            student_id: studentId,
-            group_id: groupId
-        });
-    },
-
-    async transferStudents(studentIds, fromGroupId, toGroupId) {
-        return api.post('/admin/students/transfer', {
-            student_ids: studentIds,
-            from_group_id: fromGroupId,
-            to_group_id: toGroupId
-        });
-    },
-
-    async searchStudents(name = null, groupId = null, graduationYear = null) {
-        const params = new URLSearchParams();
-        if (name) params.append('name', name);
-        if (groupId) params.append('group_id', groupId);
-        if (graduationYear) params.append('graduation_year', graduationYear.toString());
-        
-        return api.get(`/admin/students/search?${params}`);
-    }
-};
-
-// Groups API funksiyalari
-const GroupsAPI = {
-    async getGroups() {
-        return api.get('/admin/groups');
-    },
-
-    async getGroup(groupId) {
-        return api.get(`/admin/groups/${groupId}`);
-    },
-
-    async createGroup(groupData) {
-        return api.post('/admin/groups', groupData);
-    },
-
-    async deleteGroup(groupId) {
-        return api.delete(`/admin/groups/${groupId}`);
-    }
-};
-
-// Subjects API funksiyalari
-const SubjectsAPI = {
-    async getSubjects() {
-        return api.get('/admin/subjects');
-    },
-
-    async createSubject(subjectData) {
-        return api.post('/admin/subjects', subjectData);
-    },
-
-    async deleteSubject(subjectId) {
-        return api.delete(`/admin/subjects/${subjectId}`);
-    }
-};
-
-// Group-Subjects API funksiyalari
-const GroupSubjectsAPI = {
-    async getGroupSubjects() {
-        return api.get('/admin/group-subjects');
-    },
-
-    async createGroupSubject(data) {
-        return api.post('/admin/group-subjects', data);
-    },
-
-    async updateGroupSubject(groupSubjectId, data) {
-        return api.patch(`/admin/group-subjects/${groupSubjectId}`, data);
-    },
-
-    async deleteGroupSubject(groupSubjectId) {
-        return api.delete(`/admin/group-subjects/${groupSubjectId}`);
-    }
-};
-
-// Schedule API funksiyalari
-const ScheduleAPI = {
-    async getSchedule(groupId, dayOfWeek = null) {
-        const params = new URLSearchParams();
-        params.append('group_id', groupId);
-        if (dayOfWeek) params.append('day_of_week', dayOfWeek);
-        
-        return api.get(`/schedule/schedule?${params}`);
-    },
-
-    async createSchedule(scheduleData) {
-        return api.post('/schedule/schedule', scheduleData);
-    },
-
-    async updateSchedule(scheduleId, scheduleData) {
-        return api.patch(`/schedule/schedule/${scheduleId}`, scheduleData);
-    },
-
-    async deleteSchedule(scheduleId) {
-        return api.delete(`/schedule/schedule/${scheduleId}`);
-    }
-};
-
-// Payments API funksiyalari
-const PaymentsAPI = {
-    async getPayments(month = null, year = null) {
-        const params = new URLSearchParams();
-        if (month) params.append('month', month.toString());
-        if (year) params.append('year', year.toString());
-        
-        return api.get(`/admin/payments?${params}`);
-    },
-
-    async createPayment(paymentData) {
-        return api.post('/admin/payments', paymentData);
-    },
-
-    async updatePayment(paymentId, isFullyPaid, comment = null) {
-        return api.patch(`/admin/payments/${paymentId}`, {
-            is_fully_paid: isFullyPaid,
-            comment: comment
-        });
-    }
-};
-
-// News API funksiyalari
-const NewsAPI = {
-    async getNews() {
-        return api.get('/admin/news');
-    },
-
-    async createNews(newsData) {
-        return api.post('/admin/news', newsData);
-    },
-
-    async deleteNews(newsId) {
-        return api.delete(`/admin/news/${newsId}`);
-    }
-};
-
-// Reports API funksiyalari
-const ReportsAPI = {
-    async getClassReport(groupId, subjectId) {
-        return api.get(`/admin/reports/class?group_id=${groupId}&subject_id=${subjectId}`);
-    },
-
-    async getPaymentReport(month, year) {
-        return api.get(`/admin/reports/payments?month=${month}&year=${year}`);
-    },
-
-    async getSchoolOverview() {
-        return api.get('/admin/reports/overview');
-    }
-};
-
-// Search API funksiyalari
-const SearchAPI = {
-    async searchStudents(name = null, groupId = null, graduationYear = null, page = 1, size = 20) {
-        const params = new URLSearchParams();
-        if (name) params.append('name', name);
-        if (groupId) params.append('group_id', groupId);
-        if (graduationYear) params.append('graduation_year', graduationYear.toString());
-        params.append('page', page.toString());
-        params.append('size', size.toString());
-        
-        return api.get(`/search/students?${params}`);
-    },
-
-    async filterGrades(studentId = null, subjectId = null, dateFrom = null, dateTo = null, page = 1, size = 20) {
-        const params = new URLSearchParams();
-        if (studentId) params.append('student_id', studentId);
-        if (subjectId) params.append('subject_id', subjectId);
-        if (dateFrom) params.append('date_from', dateFrom);
-        if (dateTo) params.append('date_to', dateTo);
-        params.append('page', page.toString());
-        params.append('size', size.toString());
-        
-        return api.get(`/search/grades?${params}`);
-    }
-};
-
-// Files API funksiyalari
-const FilesAPI = {
-    async uploadFile(file) {
-        return api.uploadFile('/files/upload', file);
-    },
-
-    async uploadAvatar(file) {
-        return api.uploadFile('/files/upload-avatar', file);
-    },
-
-    async getMyFiles() {
-        return api.get('/files/my-files');
-    },
-
-    async deleteFile(filePath) {
-        return api.delete(`/files/delete/${filePath}`);
-    }
-};
-
-// Demo ma'lumotlari (development uchun)
-const DemoAPI = {
-    // Agar backend mavjud bo'lmasa, demo ma'lumotlarni qaytarish
-    async getDemoUsers() {
-        return [
-            {
-                id: '1',
-                full_name: 'Admin User',
-                phone: 990330919,
-                role: 'admin',
-                created_at: new Date().toISOString()
-            },
-            {
-                id: '2',
-                full_name: 'O\'qituvchi Aziz',
-                phone: 901234567,
-                role: 'teacher',
-                created_at: new Date().toISOString()
+    try {
+        const makeRequest = async () => {
+            try {
+                const response = await fetch(url, requestOptions);
+                clearTimeout(timeoutId);
+                return handleResponse(response);
+            } catch (error) {
+                clearTimeout(timeoutId);
+                
+                if (error.name === 'AbortError') {
+                    throw new APIError('So\'rov vaqti tugadi', API_ERRORS.TIMEOUT_ERROR);
+                }
+                
+                if (error instanceof APIError) {
+                    throw error;
+                }
+                
+                // Network or other fetch errors
+                throw new APIError('Tarmoq xatosi', API_ERRORS.NETWORK_ERROR);
             }
-        ];
+        };
+
+        return await retry(makeRequest, retryCount);
+    } catch (error) {
+        console.error('API Call Error:', {
+            endpoint,
+            method,
+            error: error.message,
+            type: error.type,
+            status: error.status
+        });
+        throw error;
+    }
+}
+
+// Convenience methods
+const api = {
+    /**
+     * GET request
+     * @param {string} endpoint - API endpoint
+     * @param {Object} options - Request options
+     * @returns {Promise<any>} API response data
+     */
+    get: (endpoint, options = {}) => {
+        return apiCall(endpoint, { ...options, method: 'GET' });
     },
 
-    async getDemoGroups() {
-        return [
-            { id: '1', name: '10A' },
-            { id: '2', name: '10B' },
-            { id: '3', name: '11A' }
-        ];
+    /**
+     * POST request
+     * @param {string} endpoint - API endpoint
+     * @param {any} data - Request data
+     * @param {Object} options - Request options
+     * @returns {Promise<any>} API response data
+     */
+    post: (endpoint, data = null, options = {}) => {
+        return apiCall(endpoint, { ...options, method: 'POST', data });
     },
 
-    async getDemoSubjects() {
-        return [
-            { id: '1', name: 'Matematika' },
-            { id: '2', name: 'Fizika' },
-            { id: '3', name: 'Kimyo' },
-            { id: '4', name: 'Ingliz tili' }
-        ];
+    /**
+     * PUT request
+     * @param {string} endpoint - API endpoint
+     * @param {any} data - Request data
+     * @param {Object} options - Request options
+     * @returns {Promise<any>} API response data
+     */
+    put: (endpoint, data = null, options = {}) => {
+        return apiCall(endpoint, { ...options, method: 'PUT', data });
+    },
+
+    /**
+     * PATCH request
+     * @param {string} endpoint - API endpoint
+     * @param {any} data - Request data
+     * @param {Object} options - Request options
+     * @returns {Promise<any>} API response data
+     */
+    patch: (endpoint, data = null, options = {}) => {
+        return apiCall(endpoint, { ...options, method: 'PATCH', data });
+    },
+
+    /**
+     * DELETE request
+     * @param {string} endpoint - API endpoint
+     * @param {Object} options - Request options
+     * @returns {Promise<any>} API response data
+     */
+    delete: (endpoint, options = {}) => {
+        return apiCall(endpoint, { ...options, method: 'DELETE' });
     }
 };
 
-// Export qilish
+// Export for use in other files
 if (typeof window !== 'undefined') {
     window.API = {
         api,
-        AuthAPI,
-        UsersAPI,
-        StudentsAPI,
-        GroupsAPI,
-        SubjectsAPI,
-        GroupSubjectsAPI,
-        ScheduleAPI,
-        PaymentsAPI,
-        NewsAPI,
-        ReportsAPI,
-        SearchAPI,
-        FilesAPI,
-        DemoAPI
+        apiCall,
+        setAuthToken,
+        clearAuthToken,
+        getAuthToken,
+        isAuthenticated,
+        setCurrentUser,
+        getCurrentUser,
+        APIError,
+        API_ERRORS,
+        HTTP_STATUS
     };
 }
+
+// Default export
+const API = {
+    api,
+    apiCall,
+    setAuthToken,
+    clearAuthToken,
+    getAuthToken,
+    isAuthenticated,
+    setCurrentUser,
+    getCurrentUser,
+    APIError,
+    API_ERRORS,
+    HTTP_STATUS
+};

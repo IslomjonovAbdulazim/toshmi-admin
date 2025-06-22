@@ -1,153 +1,188 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Kirish - Maktab Boshqaruvi</title>
+    <title>Kirish - Admin Panel</title>
+
+    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" href="assets/icons/favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom Styles -->
     <link rel="stylesheet" href="css/main.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
 </head>
 
-<body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <!-- Background Pattern -->
-    <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100"></div>
-
-    <!-- Login Container -->
-    <div class="relative z-10 max-w-md w-full mx-4">
-        <!-- Logo Section -->
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+        <!-- Logo and Title -->
         <div class="text-center mb-8">
-            <img id="login-logo" src="assets/images/logo.png" alt="Maktab Logotipi" class="h-20 mx-auto mb-4"
-                onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
-            <div id="logo-fallback"
-                class="hidden h-20 w-20 mx-auto mb-4 bg-blue-600 rounded-full flex items-center justify-center">
-                <span class="text-white text-2xl font-bold">M</span>
+            <div class="mx-auto h-16 w-16 mb-4">
+                <img src="assets/images/logo.png" alt="Logo" class="h-full w-full object-contain"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div class="h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center" style="display: none;">
+                    <i class="fas fa-graduation-cap text-white text-2xl"></i>
+                </div>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">Boshqaruv Paneli</h1>
-            <p class="text-gray-600 mt-2">Maktabni boshqarish uchun kiring</p>
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h2>
+            <p class="text-gray-600">Maktab Boshqaruv Tizimi</p>
+            <p class="text-sm text-gray-500 mt-2">Administrator sifatida kirish</p>
         </div>
 
         <!-- Login Form -->
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <form id="login-form" class="space-y-6">
-                <!-- Telefon Raqami -->
-                <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-                        Telefon Raqami
-                    </label>
-                    <input type="tel" id="phone" name="phone" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Telefon raqamingizni kiriting">
-                </div>
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="phoneInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-phone mr-2"></i>Telefon raqam
+                </label>
+                <input type="tel" id="phoneInput" required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    placeholder="+998 90 123 45 67" autocomplete="tel">
+            </div>
 
-                <!-- Parol -->
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-                        Parol
-                    </label>
-                    <div class="relative">
-                        <input type="password" id="password" name="password" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
-                            placeholder="Parolingizni kiriting">
-                        <button type="button" id="toggle-password"
-                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Eslab qolish -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="remember" name="remember"
-                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                        <label for="remember" class="ml-2 block text-sm text-gray-700">
-                            Meni eslab qol
-                        </label>
-                    </div>
-                    <button type="button" id="forgot-password" class="text-sm text-blue-600 hover:text-blue-500">
-                        Parolni unutdingizmi?
+            <div>
+                <label for="passwordInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-lock mr-2"></i>Parol
+                </label>
+                <div class="relative">
+                    <input type="password" id="passwordInput" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" id="togglePassword"
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-eye"></i>
                     </button>
                 </div>
-
-                <!-- Xato Xabari -->
-                <div id="error-message"
-                    class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                </div>
-
-                <!-- Kirish Tugmasi -->
-                <button type="submit" id="login-btn"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span id="login-text">Kirish</span>
-                    <svg id="login-spinner" class="hidden animate-spin -mr-1 ml-3 h-5 w-5 text-white" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
-                </button>
-            </form>
-
-            <!-- Demo Ma'lumotlari -->
-            <div class="mt-6 p-4 bg-gray-50 rounded-md">
-                <p class="text-sm text-gray-600 text-center">
-                    <strong>Demo Ma'lumotlari:</strong><br>
-                    Telefon: 990330919<br>
-                    Parol: admin123
-                </p>
             </div>
-        </div>
 
-        <!-- Footer -->
-        <div class="text-center mt-8 text-sm text-gray-500">
-            © 2024 Maktab Boshqaruv Tizimi. Barcha huquqlar himoyalangan.
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <button type="submit" id="loginBtn"
+                class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span id="loginBtnText" class="flex items-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Kirish
+                </span>
+            </button>
+        </form>
+
+        <!-- Additional Info -->
+        <div class="mt-6 text-center text-sm text-gray-500">
+            <p>Faqat administratorlar kirishi mumkin</p>
+            <p class="mt-2">Parolni unutdingizmi? Bosh administratorga murojaat qiling</p>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
 
     <script>
-        // Initialize login page
         document.addEventListener('DOMContentLoaded', function () {
             // Check if already logged in
-            if (Auth.isLoggedIn()) {
+            if (isAuthenticated()) {
                 window.location.href = 'index.html';
                 return;
             }
 
-            // Toggle password visibility
-            document.getElementById('toggle-password').addEventListener('click', function () {
-                const passwordInput = document.getElementById('password');
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
+            // Password toggle functionality
+            document.getElementById('togglePassword').addEventListener('click', function () {
+                const passwordInput = document.getElementById('passwordInput');
+                const icon = this.querySelector('i');
+
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
             });
 
-            // Handle form submission
-            document.getElementById('login-form').addEventListener('submit', async function (e) {
+            // Login form submission
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
 
-                const phone = document.getElementById('phone').value;
-                const password = document.getElementById('password').value;
-                const remember = document.getElementById('remember').checked;
+                const phoneInput = document.getElementById('phoneInput');
+                const passwordInput = document.getElementById('passwordInput');
+                const loginBtn = document.getElementById('loginBtn');
+                const loginBtnText = document.getElementById('loginBtnText');
+                const errorMessage = document.getElementById('errorMessage');
+                const errorText = document.getElementById('errorText');
 
-                await Auth.login(phone, password, remember);
+                // Clear previous errors
+                errorMessage.classList.add('hidden');
+
+                // Validate inputs
+                if (!phoneInput.value.trim()) {
+                    showError('Telefon raqamni kiriting');
+                    return;
+                }
+
+                if (!passwordInput.value) {
+                    showError('Parolni kiriting');
+                    return;
+                }
+
+                // Show loading state
+                loginBtn.disabled = true;
+                loginBtnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Yuklanmoqda...';
+
+                try {
+                    const success = await login(phoneInput.value, passwordInput.value);
+
+                    if (success) {
+                        // Success - redirect to dashboard
+                        window.location.href = 'index.html';
+                    } else {
+                        showError('Noto\'g\'ri telefon raqam yoki parol');
+                    }
+                } catch (error) {
+                    showError('Tizimda xatolik yuz berdi. Qaytadan urinib ko\'ring');
+                    console.error('Login error:', error);
+                } finally {
+                    // Reset button state
+                    loginBtn.disabled = false;
+                    loginBtnText.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Kirish';
+                }
+
+                function showError(message) {
+                    errorText.textContent = message;
+                    errorMessage.classList.remove('hidden');
+                }
             });
 
-            // Handle forgot password
-            document.getElementById('forgot-password').addEventListener('click', function () {
-                showToast('Parolni tiklash uchun tizim administratoriga murojaat qiling', 'info');
+            // Phone number formatting
+            document.getElementById('phoneInput').addEventListener('input', function (e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.startsWith('998')) {
+                    value = value.substring(3);
+                }
+
+                // Format: +998 XX XXX XX XX
+                if (value.length >= 2) {
+                    value = value.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
+                }
+
+                e.target.value = '+998 ' + value;
+            });
+
+            // Add enter key support for better UX
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                }
             });
         });
     </script>
