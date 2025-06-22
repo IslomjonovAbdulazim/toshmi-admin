@@ -1,0 +1,509 @@
+/* Responsive CSS - Mobile first approach */
+
+/* Mobile styles (base) */
+@media (max-width: 640px) {
+  /* Container uslublari */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Header mobile uslublari */
+  .mobile-header {
+    display: block;
+  }
+
+  .desktop-header {
+    display: none;
+  }
+
+  /* Navigation mobile uchun */
+  .mobile-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .mobile-nav.active {
+    transform: translateX(0);
+  }
+
+  .mobile-nav-content {
+    width: 16rem;
+    height: 100%;
+    background: white;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  /* Sidebar yashirish */
+  .sidebar {
+    display: none;
+  }
+
+  /* Main content mobile uchun */
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
+
+  /* Tables responsive */
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 600px;
+  }
+
+  /* Modal mobile uchun */
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+
+  /* Form mobile uchun */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stat cards mobile uchun */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-card-value {
+    font-size: 1.5rem;
+  }
+
+  /* Buttons mobile uchun */
+  .btn-group {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+
+  /* Search filter mobile uchun */
+  .search-filter-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .search-filter-bar .form-input {
+    width: 100%;
+  }
+
+  /* Cards mobile uchun */
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Toast mobile uchun */
+  .toast {
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+    transform: translateY(100%);
+  }
+
+  .toast.show {
+    transform: translateY(0);
+  }
+
+  /* Navigation tabs mobile uchun */
+  .nav-tabs {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .nav-tab {
+    white-space: nowrap;
+    min-width: max-content;
+  }
+
+  /* Action buttons mobile uchun */
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.5rem;
+  }
+
+  /* Pagination mobile uchun */
+  .pagination-desktop {
+    display: none;
+  }
+
+  .pagination-mobile {
+    display: flex;
+  }
+
+  /* Schedule table mobile */
+  .schedule-grid {
+    display: block;
+  }
+
+  .schedule-day {
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+
+  /* News cards mobile */
+  .news-card {
+    padding: 1rem;
+  }
+
+  .news-card-image {
+    height: 12rem;
+  }
+}
+
+/* Tablet styles */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Sidebar tablet uchun */
+  .sidebar {
+    display: block;
+    width: 16rem;
+  }
+
+  .main-content {
+    margin-left: 16rem;
+    padding: 1.5rem;
+  }
+
+  /* Stats grid tablet uchun */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  /* Form grid tablet uchun */
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  /* Modal tablet uchun */
+  .modal-content {
+    width: 85%;
+    max-width: 32rem;
+  }
+
+  /* Table tablet uchun */
+  .table {
+    font-size: 0.875rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  /* Cards tablet uchun */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Navigation tablet uchun */
+  .nav-tabs {
+    justify-content: center;
+  }
+
+  /* Search filter tablet uchun */
+  .search-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Schedule tablet uchun */
+  .schedule-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Quick actions tablet uchun */
+  .quick-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+  /* Sidebar desktop uchun */
+  .sidebar {
+    display: block;
+    width: 16rem;
+  }
+
+  .main-content {
+    margin-left: 16rem;
+    padding: 2rem;
+  }
+
+  /* Stats grid desktop uchun */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+
+  /* Form grid desktop uchun */
+  .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  /* Modal desktop uchun */
+  .modal-content {
+    width: auto;
+    min-width: 32rem;
+    max-width: 48rem;
+  }
+
+  /* Table desktop uchun */
+  .table {
+    font-size: 0.875rem;
+  }
+
+  /* Cards desktop uchun */
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Search filter desktop uchun */
+  .search-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  /* Schedule desktop uchun */
+  .schedule-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  /* Quick actions desktop uchun */
+  .quick-actions {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Dropdown hover desktop uchun */
+  .dropdown:hover .dropdown-content {
+    display: block;
+  }
+
+  /* Sidebar hover effects */
+  .sidebar-nav-item:hover {
+    transform: translateX(0.25rem);
+  }
+
+  /* Tooltips desktop uchun */
+  .tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #374151;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+  }
+}
+
+/* Large desktop styles */
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .main-content {
+    padding: 2.5rem;
+  }
+
+  .stats-grid {
+    gap: 2.5rem;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Extra large desktop */
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+
+  .main-content {
+    padding: 3rem;
+  }
+
+  .stats-grid {
+    gap: 3rem;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar,
+  .header,
+  .mobile-nav,
+  .action-buttons,
+  .btn,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .table {
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
+    border: 1px solid #000;
+    padding: 0.5rem;
+  }
+
+  .card {
+    border: 1px solid #000;
+    margin-bottom: 1rem;
+    break-inside: avoid;
+  }
+
+  body {
+    color: #000 !important;
+    background: #fff !important;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .card,
+  .btn,
+  .form-input {
+    border: 2px solid;
+  }
+
+  .nav-tab.active {
+    outline: 2px solid;
+  }
+}
+
+/* Dark mode preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #111827;
+    --surface-color: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border-color: #374151;
+  }
+
+  body {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+  }
+
+  .card,
+  .modal-content,
+  .dropdown-content {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+  }
+
+  .table th {
+    background-color: #374151;
+  }
+
+  .table tbody tr:hover {
+    background-color: #374151;
+  }
+}
+
+/* Focus visible for better accessibility */
+@media (any-hover: hover) {
+  .btn:hover,
+  .nav-tab:hover,
+  .action-btn:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Touch device optimizations */
+@media (any-hover: none) {
+  .btn,
+  .nav-tab,
+  .action-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .dropdown:hover .dropdown-content {
+    display: none;
+  }
+
+  .dropdown.active .dropdown-content {
+    display: block;
+  }
+}
