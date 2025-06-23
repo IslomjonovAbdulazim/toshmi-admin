@@ -43,8 +43,8 @@ const News = () => {
       
       // Upload image if selected
       if (selectedFile) {
-        const uploadResult = await ApiService.uploadImage(selectedFile);
-        mediaUrls.push(uploadResult.file_url);
+        const uploadResult = await ApiService.uploadFile(selectedFile);
+        mediaUrls.push(uploadResult.file_path);
       }
 
       await ApiService.createNews({

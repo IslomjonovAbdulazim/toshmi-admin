@@ -71,19 +71,6 @@ const Login = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Rol</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="form-select"
-            >
-              <option value="admin">Administrator</option>
-              <option value="teacher">O'qituvchi</option>
-            </select>
-          </div>
-
           {error && <div className="error">{error}</div>}
 
           <button

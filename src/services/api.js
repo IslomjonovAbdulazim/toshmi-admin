@@ -15,8 +15,11 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    console.log('API Request URL:', url); // Debug log
+    
     const config = {
       headers: this.getAuthHeaders(),
+      mode: 'cors',
       ...options
     };
 
@@ -31,12 +34,20 @@ class ApiService {
           return;
         }
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
+        const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API xatolik:', error);
+      console.error('API Error:', error);
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Serverga ulanishda xatolik. Backend server ishlamayotgan bo\'lishi mumkin.');
+      }
+      if (error.message.includes('CORS')) {
+        throw new Error('CORS xatoligi. Backend CORS sozlamalarini tekshiring.');
+      }
       throw error;
     }
   }
@@ -87,7 +98,11 @@ class ApiService {
 
   // Students
   async searchStudents(params = {}) {
-    const query = new URLSearchParams(params).toString();
+    // Remove empty values to avoid 422 errors
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([key, value]) => value !== '' && value !== null && value !== undefined)
+    );
+    const query = new URLSearchParams(cleanParams).toString();
     return this.request(`/admin/students/search?${query}`);
   }
 
@@ -174,12 +189,12 @@ class ApiService {
   }
 
   // File upload
-  async uploadImage(file) {
+  async uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
     
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/admin/upload-image`, {
+    const response = await fetch(`${this.baseURL}/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -188,7 +203,7 @@ class ApiService {
     });
 
     if (!response.ok) {
-      throw new Error('Rasm yuklashda xatolik');
+      throw new Error('Fayl yuklashda xatolik');
     }
 
     return await response.json();

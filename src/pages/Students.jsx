@@ -9,6 +9,7 @@ import ApiService from '../services/api';
 const Students = () => {
   const [students, setStudents] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [searchForm, setSearchForm] = useState({
@@ -18,8 +19,9 @@ const Students = () => {
   });
   const [newStudent, setNewStudent] = useState({
     full_name: '',
-    phone: '',
+    phone: `99123${Math.floor(1000 + Math.random() * 9000)}`,
     group_id: '',
+    parent_id: '',
     graduation_year: new Date().getFullYear() + 1,
     password: 'student123'
   });
@@ -27,8 +29,18 @@ const Students = () => {
 
   useEffect(() => {
     loadGroups();
+    loadParents();
     searchStudents();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadParents = async () => {
+    try {
+      const data = await ApiService.getUsers({ role: 'parent' });
+      setParents(data);
+    } catch (error) {
+      console.error('Ota-onalarni yuklashda xatolik:', error);
+    }
+  };
 
   const loadGroups = async () => {
     try {
@@ -42,10 +54,17 @@ const Students = () => {
   const searchStudents = async () => {
     setLoading(true);
     try {
-      const data = await ApiService.searchStudents(searchForm);
+      // Filter out empty values
+      const cleanParams = {};
+      if (searchForm.name.trim()) cleanParams.name = searchForm.name;
+      if (searchForm.group_id) cleanParams.group_id = searchForm.group_id;
+      if (searchForm.graduation_year) cleanParams.graduation_year = searchForm.graduation_year;
+      
+      const data = await ApiService.searchStudents(cleanParams);
       setStudents(data);
     } catch (error) {
       setError('O\'quvchilarni qidirishda xatolik');
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
@@ -56,38 +75,75 @@ const Students = () => {
     setError('');
 
     try {
-      // Create user first
+      // Validate form data
+      if (!newStudent.full_name.trim()) {
+        setError('Ism familiya kiritilmagan');
+        return;
+      }
+      if (!newStudent.group_id) {
+        setError('Guruh tanlanmagan');
+        return;
+      }
+
+      // Create user first 
       const userData = {
         role: 'student',
-        phone: parseInt(newStudent.phone),
-        full_name: newStudent.full_name,
+        phone: parseInt(newStudent.phone.replace(/[^\d]/g, '')),
+        full_name: newStudent.full_name.trim(),
         password: newStudent.password
       };
       
       const user = await ApiService.createUser(userData);
       
-      // Create student profile
-      const studentData = {
-        user_id: user.id,
-        group_id: newStudent.group_id,
-        graduation_year: parseInt(newStudent.graduation_year)
-      };
+      // Try to create student - if it fails, delete the user
+      try {
+        const studentData = {
+          user_id: user.id,
+          group_id: newStudent.group_id,
+          parent_id: newStudent.parent_id || null,
+          graduation_year: parseInt(newStudent.graduation_year)
+        };
+        
+        await ApiService.createStudent(studentData);
+        
+        setShowModal(false);
+        searchStudents();
+        resetForm();
+      } catch (studentError) {
+        // Student creation failed, clean up the user
+        try {
+          await ApiService.deleteUser(user.id);
+        } catch (deleteError) {
+          console.error('Failed to clean up user:', deleteError);
+        }
+        throw new Error('Backend xatoligi: StudentCreate schema da parent_id yo\'q. Backend ni tuzatish kerak.');
+      }
       
-      await ApiService.createStudent(studentData);
-      
-      setShowModal(false);
-      searchStudents();
-      resetForm();
     } catch (error) {
-      setError(error.message);
+      let errorMessage = 'O\'quvchi yaratishda xatolik';
+      
+      if (error.message.includes('UNIQUE constraint failed: users.phone')) {
+        errorMessage = 'Bu telefon raqam allaqachon ro\'yxatga olingan';
+      } else if (error.message.includes('parent_id')) {
+        errorMessage = 'Backend xatoligi: Student yaratish funksiyasini tuzatish kerak';
+      } else if (error.message.includes('500')) {
+        errorMessage = 'Server ichki xatoligi. Backend kodini tekshiring.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
     }
   };
 
   const resetForm = () => {
+    const randomPhone = `99123${Math.floor(1000 + Math.random() * 9000)}`;
+    
     setNewStudent({
       full_name: '',
-      phone: '',
+      phone: randomPhone,
       group_id: '',
+      parent_id: '',
       graduation_year: new Date().getFullYear() + 1,
       password: 'student123'
     });
@@ -209,6 +265,20 @@ const Students = () => {
               <option value="">Guruhni tanlang</option>
               {groups.map(group => (
                 <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ota-ona (ixtiyoriy)</label>
+            <select
+              value={newStudent.parent_id}
+              onChange={(e) => setNewStudent({...newStudent, parent_id: e.target.value})}
+              className="form-select"
+            >
+              <option value="">Ota-onani tanlang</option>
+              {parents.map(parent => (
+                <option key={parent.id} value={parent.id}>{parent.full_name}</option>
               ))}
             </select>
           </div>

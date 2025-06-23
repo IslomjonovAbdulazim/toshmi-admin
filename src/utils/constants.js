@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://islomjonovabdulazim-toshmi-backend-ac2b.twc1.net';
 
 export const ROLES = {
   ADMIN: 'admin',

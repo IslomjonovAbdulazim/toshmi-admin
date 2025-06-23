@@ -40,19 +40,24 @@ const Users = () => {
     setError('');
     
     try {
+      const submitData = {
+        ...formData,
+        phone: parseInt(formData.phone.replace(/[^\d]/g, ''))
+      };
+      
+      console.log('Submitting data:', submitData); // Debug log
+      
       if (editingUser) {
-        await ApiService.updateUser(editingUser.id, formData);
+        await ApiService.updateUser(editingUser.id, submitData);
       } else {
-        await ApiService.createUser({
-          ...formData,
-          phone: parseInt(formData.phone)
-        });
+        await ApiService.createUser(submitData);
       }
       setShowModal(false);
       loadUsers();
       resetForm();
     } catch (error) {
-      setError(error.message);
+      console.error('Submit error:', error);
+      setError(typeof error.message === 'string' ? error.message : 'Foydalanuvchini yaratishda xatolik');
     }
   };
 
