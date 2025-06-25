@@ -1,86 +1,163 @@
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.svg';
+import { useAuth } from '../hooks/useAuth';
+import Button from '../components/Common/Button';
+import Input from '../components/Common/Input';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    phone: '',
-    password: '',
-    role: 'admin'
+    username: '',
+    password: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login } = useAuth();
+  const [error, setError] = useState('');
+
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const result = await login(formData);
-    
-    if (result.success) {
-      navigate('/');
-    } else {
-      setError(result.error || 'Kirishda xatolik yuz berdi');
+    // Basic validation
+    if (!formData.username.trim()) {
+      setError('Foydalanuvchi nomini kiriting');
+      setLoading(false);
+      return;
     }
-    
-    setLoading(false);
+
+    if (!formData.password) {
+      setError('Parolni kiriting');
+      setLoading(false);
+      return;
+    }
+
+    // Simple test login - remove this in production
+    if (formData.username === 'admin' && formData.password === 'admin123') {
+      // Mock successful login for testing
+      const mockUser = {
+        id: 1,
+        username: 'admin',
+        role: 'admin',
+        first_name: 'Administrator',
+        last_name: 'System'
+      };
+      
+      // Store mock auth data
+      localStorage.setItem('token', 'mock-jwt-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      navigate('/', { replace: true });
+      setLoading(false);
+      return;
+    }
+
+    // Try API login
+    const loginData = {
+      username: formData.username,
+      password: formData.password,
+      role: 'admin'
+    };
+
+    try {
+      const result = await login(loginData);
+      
+      if (result.success) {
+        navigate('/', { replace: true });
+      } else {
+        setError(result.error || 'Noto\'g\'ri foydalanuvchi nomi yoki parol');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Ulanishda xatolik yuz berdi. Serverga ulanib bo\'lmayapti.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
-        <img src={logo} alt="Logo" className="login-logo" />
-        <h1 className="login-title">Admin paneli</h1>
+        {/* Logo */}
+        <div className="login-logo">
+          🏫
+        </div>
         
-        <form onSubmit={handleSubmit}>
+        {/* Title */}
+        <h1 className="login-title">Admin Paneli</h1>
+        <p className="text-center text-gray-600 mb-6">
+          Maktab boshqaruv tizimiga kirish
+        </p>
+        
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="form-group">
-            <label className="form-label">Telefon raqam</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
+            <label className="form-label">Foydalanuvchi nomi</label>
+            <Input
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="990330919"
-              className="form-input"
+              placeholder="Foydalanuvchi nomini kiriting"
               required
+              autoComplete="username"
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">Parol</label>
-            <input
+            <Input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               placeholder="Parolni kiriting"
-              className="form-input"
               required
+              autoComplete="current-password"
             />
           </div>
 
-          {error && <div className="error">{error}</div>}
+          {error && (
+            <div className="error">
+              {error}
+            </div>
+          )}
 
-          <button
+          <Button
             type="submit"
-            className="btn btn-primary w-full"
+            variant="primary"
+            className="w-full"
+            loading={loading}
             disabled={loading}
           >
             {loading ? 'Kirilmoqda...' : 'Kirish'}
-          </button>
+          </Button>
         </form>
+
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-500">
+            © 2025 Maktab Boshqaruv Tizimi v2.0.0
+          </p>
+          <div className="text-xs text-gray-400 mt-2">
+            Test: admin / admin123
+          </div>
+        </div>
       </div>
     </div>
   );

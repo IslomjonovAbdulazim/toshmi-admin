@@ -1,21 +1,22 @@
-import { API_BASE_URL } from '../utils/constants';
+import { API_BASE_URL, STORAGE_KEYS } from '../utils/constants';
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
   }
 
+  // Get authentication headers
   getAuthHeaders() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     return {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     };
   }
 
+  // Generic request method
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    console.log('API Request URL:', url); // Debug log
     
     const config = {
       headers: this.getAuthHeaders(),
@@ -26,13 +27,16 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       
+      // Handle unauthorized
+      if (response.status === 401) {
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        window.location.href = '/login';
+        return;
+      }
+
+      // Handle other errors
       if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}`;
         throw new Error(errorMessage);
@@ -42,17 +46,42 @@ class ApiService {
     } catch (error) {
       console.error('API Error:', error);
       
+      // Network errors
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('Serverga ulanishda xatolik. Backend server ishlamayotgan bo\'lishi mumkin.');
       }
+      
+      // CORS errors
       if (error.message.includes('CORS')) {
         throw new Error('CORS xatoligi. Backend CORS sozlamalarini tekshiring.');
       }
+      
       throw error;
     }
   }
 
-  // Auth
+  // File upload method
+  async uploadFile(endpoint, file, additionalData = {}) {
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Add additional data
+    Object.keys(additionalData).forEach(key => {
+      formData.append(key, additionalData[key]);
+    });
+
+    return this.request(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+  }
+
+  // ===== AUTHENTICATION ENDPOINTS =====
+  
   async login(credentials) {
     return this.request('/auth/login', {
       method: 'POST',
@@ -60,155 +89,318 @@ class ApiService {
     });
   }
 
-  async getCurrentUser() {
-    return this.request('/auth/me');
+  async getProfile() {
+    return this.request('/auth/profile');
   }
 
-  // Users
-  async getUsers(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    return this.request(`/admin/users?${query}`);
+  async updateProfile(data) {
+    return this.request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
   }
 
-  async createUser(userData) {
-    return this.request('/admin/users', {
+  async changePassword(data) {
+    return this.request('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // ===== NOTIFICATION ENDPOINTS =====
+  
+  async getNotifications() {
+    return this.request('/auth/notifications');
+  }
+
+  async markNotificationRead(id) {
+    return this.request(`/auth/notifications/${id}/read`, {
+      method: 'PUT'
+    });
+  }
+
+  async markAllNotificationsRead() {
+    return this.request('/auth/notifications/mark-all-read', {
+      method: 'PUT'
+    });
+  }
+
+  async getUnreadCount() {
+    return this.request('/auth/notifications/unread-count');
+  }
+
+  // ===== STUDENT MANAGEMENT =====
+  
+  async getStudents() {
+    return this.request('/admin/students');
+  }
+
+  async getStudent(id) {
+    return this.request(`/admin/students/${id}`);
+  }
+
+  async createStudent(data) {
+    return this.request('/admin/students', {
       method: 'POST',
-      body: JSON.stringify(userData)
+      body: JSON.stringify(data)
     });
   }
 
-  async updateUser(userId, userData) {
-    return this.request(`/admin/users/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(userData)
+  async updateStudent(id, data) {
+    return this.request(`/admin/students/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
     });
   }
 
-  async deleteUser(userId) {
-    return this.request(`/admin/users/${userId}`, {
+  async deleteStudent(id) {
+    return this.request(`/admin/students/${id}`, {
       method: 'DELETE'
     });
   }
 
-  async resetUserPassword(userId) {
-    return this.request(`/admin/users/${userId}/reset-password`, {
-      method: 'POST'
-    });
+  // ===== TEACHER MANAGEMENT =====
+  
+  async getTeachers() {
+    return this.request('/admin/teachers');
   }
 
-  // Students
-  async searchStudents(params = {}) {
-    // Remove empty values to avoid 422 errors
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([key, value]) => value !== '' && value !== null && value !== undefined)
-    );
-    const query = new URLSearchParams(cleanParams).toString();
-    return this.request(`/admin/students/search?${query}`);
+  async getTeacher(id) {
+    return this.request(`/admin/teachers/${id}`);
   }
 
-  async createStudent(studentData) {
-    return this.request('/admin/students', {
+  async createTeacher(data) {
+    return this.request('/admin/teachers', {
       method: 'POST',
-      body: JSON.stringify(studentData)
+      body: JSON.stringify(data)
     });
   }
 
-  // Groups
+  async updateTeacher(id, data) {
+    return this.request(`/admin/teachers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteTeacher(id) {
+    return this.request(`/admin/teachers/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== PARENT MANAGEMENT =====
+  
+  async getParents() {
+    return this.request('/admin/parents');
+  }
+
+  async createParent(data) {
+    return this.request('/admin/parents', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateParent(id, data) {
+    return this.request(`/admin/parents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteParent(id) {
+    return this.request(`/admin/parents/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== GROUP MANAGEMENT =====
+  
   async getGroups() {
     return this.request('/admin/groups');
   }
 
-  async createGroup(groupData) {
+  async getGroup(id) {
+    return this.request(`/admin/groups/${id}`);
+  }
+
+  async createGroup(data) {
     return this.request('/admin/groups', {
       method: 'POST',
-      body: JSON.stringify(groupData)
+      body: JSON.stringify(data)
     });
   }
 
-  // Subjects
-  async getSubjects() {
-    return this.request('/admin/subjects');
-  }
-
-  async createSubject(subjectData) {
-    return this.request('/admin/subjects', {
-      method: 'POST',
-      body: JSON.stringify(subjectData)
+  async updateGroup(id, data) {
+    return this.request(`/admin/groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
     });
   }
 
-  // Payments
-  async getPayments(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    return this.request(`/admin/payments?${query}`);
-  }
-
-  async createPayment(paymentData) {
-    return this.request('/admin/payments', {
-      method: 'POST',
-      body: JSON.stringify(paymentData)
-    });
-  }
-
-  async updatePayment(paymentId, updateData) {
-    return this.request(`/admin/payments/${paymentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updateData)
-    });
-  }
-
-  // News
-  async getNews() {
-    return this.request('/admin/news');
-  }
-
-  async createNews(newsData) {
-    return this.request('/admin/news', {
-      method: 'POST',
-      body: JSON.stringify(newsData)
-    });
-  }
-
-  async deleteNews(newsId) {
-    return this.request(`/admin/news/${newsId}`, {
+  async deleteGroup(id) {
+    return this.request(`/admin/groups/${id}`, {
       method: 'DELETE'
     });
   }
 
-  // Reports
-  async getOverviewReport() {
-    return this.request('/admin/reports/overview');
+  // ===== SUBJECT MANAGEMENT =====
+  
+  async getSubjects() {
+    return this.request('/admin/subjects');
   }
 
-  async getClassReport(groupId, subjectId) {
-    return this.request(`/admin/reports/class?group_id=${groupId}&subject_id=${subjectId}`);
+  async getSubject(id) {
+    return this.request(`/admin/subjects/${id}`);
   }
 
-  async getPaymentReport(month, year) {
-    return this.request(`/admin/reports/payments?month=${month}&year=${year}`);
-  }
-
-  // File upload
-  async uploadFile(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/upload`, {
+  async createSubject(data) {
+    return this.request('/admin/subjects', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData
+      body: JSON.stringify(data)
     });
+  }
 
-    if (!response.ok) {
-      throw new Error('Fayl yuklashda xatolik');
-    }
+  async updateSubject(id, data) {
+    return this.request(`/admin/subjects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
 
-    return await response.json();
+  async deleteSubject(id) {
+    return this.request(`/admin/subjects/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== TEACHER ASSIGNMENT =====
+  
+  async assignTeacher(data) {
+    return this.request('/admin/assign-teacher', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // ===== PAYMENT MANAGEMENT =====
+  
+  async createPayment(data) {
+    return this.request('/admin/payments', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // ===== NEWS MANAGEMENT =====
+  
+  async getNews() {
+    return this.request('/admin/news');
+  }
+
+  async getNewsArticle(id) {
+    return this.request(`/admin/news/${id}`);
+  }
+
+  async createNews(data) {
+    return this.request('/admin/news', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateNews(id, data) {
+    return this.request(`/admin/news/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteNews(id) {
+    return this.request(`/admin/news/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== SCHEDULE MANAGEMENT =====
+  
+  async getSchedules() {
+    return this.request('/admin/schedule');
+  }
+
+  async getSchedule(id) {
+    return this.request(`/admin/schedule/${id}`);
+  }
+
+  async createSchedule(data) {
+    return this.request('/admin/schedule', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateSchedule(id, data) {
+    return this.request(`/admin/schedule/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async deleteSchedule(id) {
+    return this.request(`/admin/schedule/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== FILE MANAGEMENT =====
+  
+  async uploadProfilePicture(file) {
+    return this.uploadFile('/files/profile-picture', file);
+  }
+
+  async uploadHomeworkFile(homeworkId, file) {
+    return this.uploadFile(`/files/homework/${homeworkId}/upload`, file);
+  }
+
+  async uploadExamFile(examId, file) {
+    return this.uploadFile(`/files/exam/${examId}/upload`, file);
+  }
+
+  async uploadNewsImage(newsId, file) {
+    return this.uploadFile(`/files/news/${newsId}/upload-image`, file);
+  }
+
+  async downloadFile(fileId) {
+    return this.request(`/files/${fileId}`);
+  }
+
+  async deleteFile(fileId) {
+    return this.request(`/files/${fileId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== UTILITY METHODS =====
+  
+  // Get system health
+  async getHealth() {
+    return this.request('/health');
+  }
+
+  // Get system stats
+  async getStats() {
+    return this.request('/stats');
+  }
+
+  // Initialize database (if needed)
+  async initializeDatabase() {
+    return this.request('/init-db', {
+      method: 'POST'
+    });
   }
 }
 
+// Export singleton instance
 const apiService = new ApiService();
 export default apiService;

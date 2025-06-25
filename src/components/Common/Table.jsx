@@ -1,35 +1,58 @@
 import React from 'react';
 
-const Table = ({ columns, data, actions }) => {
+const Table = ({ 
+  columns, 
+  data, 
+  loading = false, 
+  emptyMessage = 'Ma\'lumotlar topilmadi',
+  className = ''
+}) => {
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        Ma'lumotlar yuklanmoqda...
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <div className="text-4xl mb-4">📭</div>
+        <p>{emptyMessage}</p>
+      </div>
+    );
+  }
+
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.key}>{column.title}</th>
-          ))}
-          {actions && <th>Amallar</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((row, index) => (
-          <tr key={index}>
+    <div className={`overflow-x-auto ${className}`}>
+      <table className="table">
+        <thead>
+          <tr>
             {columns.map((column) => (
-              <td key={column.key}>
-                {column.render ? column.render(row[column.key], row) : row[column.key]}
-              </td>
+              <th key={column.key} className={column.headerClassName || ''}>
+                {column.label}
+              </th>
             ))}
-            {actions && (
-              <td>
-                <div className="actions">
-                  {actions(row)}
-                </div>
-              </td>
-            )}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map((row, index) => (
+            <tr key={row.id || index}>
+              {columns.map((column) => (
+                <td key={column.key} className={column.cellClassName || ''}>
+                  {column.render 
+                    ? column.render(row, index)
+                    : row[column.key]
+                  }
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

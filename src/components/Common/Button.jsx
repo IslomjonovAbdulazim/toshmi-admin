@@ -1,30 +1,56 @@
 import React from 'react';
 
-const Button = ({ 
-  children, 
-  onClick, 
-  type = 'button', 
-  variant = 'default', 
+const Button = ({
+  children,
+  type = 'button',
+  variant = 'default',
   size = 'default',
   disabled = false,
-  className = ''
+  loading = false,
+  onClick,
+  className = '',
+  ...props
 }) => {
-  const baseClass = 'btn';
-  const variantClass = variant === 'primary' ? 'btn-primary' : 
-                      variant === 'danger' ? 'btn-danger' : '';
-  const sizeClass = size === 'sm' ? 'btn-sm' : '';
-  
-  const classes = [baseClass, variantClass, sizeClass, className]
-    .filter(Boolean)
-    .join(' ');
+  const getVariantClass = () => {
+    switch (variant) {
+      case 'primary':
+        return 'btn-primary';
+      case 'danger':
+        return 'btn-danger';
+      case 'secondary':
+        return 'btn-secondary';
+      default:
+        return '';
+    }
+  };
+
+  const getSizeClass = () => {
+    switch (size) {
+      case 'sm':
+        return 'btn-sm';
+      case 'lg':
+        return 'btn-lg';
+      default:
+        return '';
+    }
+  };
+
+  const classes = [
+    'btn',
+    getVariantClass(),
+    getSizeClass(),
+    className
+  ].filter(Boolean).join(' ');
 
   return (
     <button
       type={type}
-      onClick={onClick}
-      disabled={disabled}
       className={classes}
+      disabled={disabled || loading}
+      onClick={onClick}
+      {...props}
     >
+      {loading && <div className="spinner"></div>}
       {children}
     </button>
   );

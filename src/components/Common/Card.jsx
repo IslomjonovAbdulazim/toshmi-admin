@@ -1,15 +1,32 @@
 import React from 'react';
 
-const Card = ({ title, children, actions }) => {
+const Card = ({ 
+  title, 
+  children, 
+  className = '', 
+  headerAction = null,
+  loading = false 
+}) => {
   return (
-    <div className="card">
+    <div className={`card ${className}`}>
       {title && (
         <div className="card-header">
           <h3 className="card-title">{title}</h3>
-          {actions && <div>{actions}</div>}
+          {headerAction && (
+            <div className="card-actions">
+              {headerAction}
+            </div>
+          )}
         </div>
       )}
-      {children}
+      {loading ? (
+        <div className="loading">
+          <div className="spinner"></div>
+          Yuklanmoqda...
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 };

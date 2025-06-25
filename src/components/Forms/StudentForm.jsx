@@ -1,131 +1,310 @@
-// src/components/Forms/StudentForm.jsx
 import React, { useState, useEffect } from 'react';
 import Input from '../Common/Input';
 import Button from '../Common/Button';
-import { validateForm } from '../../utils/validators';
+import { createStudentValidator } from '../../utils/validation';
 
-const StudentForm = ({ student = null, groups = [], onSubmit, onCancel, loading = false }) => {
+const StudentForm = ({
+  initialData = {},
+  groups = [],
+  onSubmit,
+  onCancel,
+  loading = false,
+  submitText = 'Saqlash',
+  cancelText = 'Bekor qilish',
+  isEditing = false
+}) => {
   const [formData, setFormData] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
+    password: '',
     group_id: '',
-    graduation_year: new Date().getFullYear() + 1,
-    password: 'student123'
+    parent_phone: '',
+    graduation_year: new Date().getFullYear() + 4,
+    ...initialData
   });
+
   const [errors, setErrors] = useState({});
+  const [validator] = useState(() => createStudentValidator());
 
+  // Update form data when initialData changes
   useEffect(() => {
-    if (student) {
-      setFormData({
-        full_name: student.user?.full_name || '',
-        phone: student.user?.phone?.toString() || '',
-        group_id: student.group_id,
-        graduation_year: student.graduation_year,
-        password: 'student123'
-      });
-    }
-  }, [student]);
+    setFormData(prev => ({
+      ...prev,
+      ...initialData,
+      password: '', // Always reset password field
+      group_id: initialData.group_id || ''
+    }));
+  }, [initialData]);
 
-  const validationRules = {
-    full_name: { required: true, label: 'Ism familiya' },
-    phone: { required: true, type: 'phone', label: 'Telefon raqam' },
-    group_id: { required: true, label: 'Guruh' },
-    graduation_year: { required: true, type: 'number', min: new Date().getFullYear(), max: new Date().getFullYear() + 15, label: 'Bitirish yili' },
-    password: { required: true, label: 'Parol' }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Special handling for phone numbers
+    if (name === 'phone' || name === 'parent_phone') {
+      const digits = value.replace(/\D/g, '');
+      if (digits.length <= 9) {
+        setFormData(prev => ({ ...prev, [name]: digits }));
+      }
+    } else if (name === 'graduation_year') {
+      // Ensure graduation year is a number
+      const year = parseInt(value) || '';
+      setFormData(prev => ({ ...prev, [name]: year }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+
+    // Clear field error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    // Create validator with password rule if needed
+    const formValidator = createStudentValidator();
+    
+    if (!isEditing || formData.password) {
+      formValidator.required('password', 'Parol kiritilishi shart')
+                  .minLength('password', 6, 'Parol kamida 6 belgidan iborat bo\'lishi kerak');
+    }
+
+    const result = formValidator.validate(formData);
+    setErrors(result.errors);
+    return result.isValid;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const validation = validateForm(formData, validationRules);
-    setErrors(validation.errors);
-    
-    if (validation.isValid) {
-      onSubmit({
-        ...formData,
-        phone: parseInt(formData.phone.replace(/[^\d]/g, '')),
-        graduation_year: parseInt(formData.graduation_year)
-      });
+    if (!validateForm()) {
+      return;
     }
+
+    // Prepare data for submission
+    const submitData = { ...formData };
+    
+    // Convert group_id to number if selected
+    if (submitData.group_id) {
+      submitData.group_id = parseInt(submitData.group_id);
+    } else {
+      delete submitData.group_id; // Remove if not selected
+    }
+
+    // Remove password if editing and password is empty
+    if (isEditing && !submitData.password) {
+      delete submitData.password;
+    }
+
+    // Remove empty parent_phone
+    if (!submitData.parent_phone) {
+      delete submitData.parent_phone;
+    }
+
+    onSubmit(submitData);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
+  const getFieldError = (fieldName) => {
+    const fieldErrors = errors[fieldName];
+    return fieldErrors && fieldErrors.length > 0 ? fieldErrors[0] : '';
+  };
+
+  const getSelectedGroup = () => {
+    return groups.find(group => group.id === parseInt(formData.group_id));
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Input
-        label="Ism familiya"
-        name="full_name"
-        value={formData.full_name}
-        onChange={handleChange}
-        error={errors.full_name}
-        required
-      />
-      
-      <Input
-        label="Telefon raqam"
-        name="phone"
-        type="tel"
-        value={formData.phone}
-        onChange={handleChange}
-        placeholder="990330919"
-        error={errors.phone}
-        required
-      />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Personal Information */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-800 mb-3">Shaxsiy ma'lumotlar</h3>
+        
+        <div className="grid grid-2 gap-4">
+          <div className="form-group">
+            <label className="form-label">Ism *</label>
+            <Input
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder="Ismni kiriting"
+              error={getFieldError('first_name')}
+              required
+            />
+          </div>
 
-      <div className="form-group">
-        <label className="form-label">
-          Guruh <span style={{ color: '#e53e3e' }}>*</span>
-        </label>
-        <select
-          name="group_id"
-          value={formData.group_id}
-          onChange={handleChange}
-          className="form-select"
-          required
+          <div className="form-group">
+            <label className="form-label">Familiya *</label>
+            <Input
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              placeholder="Familiyani kiriting"
+              error={getFieldError('last_name')}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Telefon raqam</label>
+          <div className="flex items-center">
+            <span className="form-input-prefix">+998</span>
+            <Input
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="901234567"
+              pattern="[0-9]{9}"
+              maxLength="9"
+              error={getFieldError('phone')}
+            />
+          </div>
+          <small className="text-gray-500 text-xs mt-1">
+            O'quvchining shaxsiy telefon raqami (ixtiyoriy)
+          </small>
+        </div>
+      </div>
+
+      {/* Academic Information */}
+      <div className="bg-blue-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-800 mb-3">Ta'lim ma'lumotlari</h3>
+        
+        <div className="grid grid-2 gap-4">
+          <div className="form-group">
+            <label className="form-label">Sinf</label>
+            <select
+              name="group_id"
+              value={formData.group_id}
+              onChange={handleChange}
+              className="form-select"
+            >
+              <option value="">Sinfni tanlang</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name} ({group.academic_year})
+                </option>
+              ))}
+            </select>
+            <small className="text-gray-500 text-xs mt-1">
+              O'quvchi qaysi sinfda o'qishini tanlang
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Bitirish yili</label>
+            <Input
+              type="number"
+              name="graduation_year"
+              value={formData.graduation_year}
+              onChange={handleChange}
+              min={new Date().getFullYear()}
+              max={new Date().getFullYear() + 10}
+              error={getFieldError('graduation_year')}
+            />
+            <small className="text-gray-500 text-xs mt-1">
+              O'quvchining maktabni bitirish yili
+            </small>
+          </div>
+        </div>
+
+        {/* Display selected group info */}
+        {getSelectedGroup() && (
+          <div className="mt-3 p-3 bg-white rounded border">
+            <div className="text-sm">
+              <span className="font-medium">Tanlangan sinf:</span> {getSelectedGroup().name}
+              <br />
+              <span className="font-medium">O'quv yili:</span> {getSelectedGroup().academic_year}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Parent Information */}
+      <div className="bg-green-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-800 mb-3">Ota-ona ma'lumotlari</h3>
+        
+        <div className="form-group">
+          <label className="form-label">Ota-ona telefoni</label>
+          <div className="flex items-center">
+            <span className="form-input-prefix">+998</span>
+            <Input
+              name="parent_phone"
+              value={formData.parent_phone}
+              onChange={handleChange}
+              placeholder="901234567"
+              pattern="[0-9]{9}"
+              maxLength="9"
+              error={getFieldError('parent_phone')}
+            />
+          </div>
+          <small className="text-gray-500 text-xs mt-1">
+            Ota-ona telefon raqami (tizimda ro'yxatdan o'tgan bo'lishi kerak)
+          </small>
+        </div>
+      </div>
+
+      {/* Account Information */}
+      <div className="bg-yellow-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-800 mb-3">Akkaunt ma'lumotlari</h3>
+        
+        <div className="form-group">
+          <label className="form-label">
+            Parol {!isEditing && "*"}
+            {isEditing && (
+              <span className="text-sm text-gray-500 font-normal ml-2">
+                (bo'sh qoldiring, agar o'zgartirmoqchi bo'lmasangiz)
+              </span>
+            )}
+          </label>
+          <Input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Parolni kiriting"
+            error={getFieldError('password')}
+            required={!isEditing}
+            minLength="6"
+          />
+          <small className="text-gray-500 text-xs mt-1">
+            O'quvchi tizimga kirish uchun parol (kamida 6 ta belgi)
+          </small>
+        </div>
+      </div>
+
+      {/* Form Actions */}
+      <div className="flex gap-3 justify-end pt-4 border-t">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            {cancelText}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          loading={loading}
+          disabled={loading}
         >
-          <option value="">Guruhni tanlang</option>
-          {groups.map(group => (
-            <option key={group.id} value={group.id}>{group.name}</option>
-          ))}
-        </select>
-        {errors.group_id && <div className="error">{errors.group_id}</div>}
-      </div>
-
-      <Input
-        label="Bitirish yili"
-        name="graduation_year"
-        type="number"
-        value={formData.graduation_year}
-        onChange={handleChange}
-        error={errors.graduation_year}
-        required
-      />
-
-      <Input
-        label="Boshlang'ich parol"
-        name="password"
-        value={formData.password}
-        onChange={handleChange}
-        error={errors.password}
-        required
-      />
-
-      <div className="flex gap-2 mt-4">
-        <Button type="submit" variant="primary" disabled={loading}>
-          {loading ? 'Saqlanmoqda...' : 'Yaratish'}
-        </Button>
-        <Button type="button" onClick={onCancel}>
-          Bekor qilish
+          {submitText}
         </Button>
       </div>
+
+      {/* Display validation summary if there are errors */}
+      {Object.keys(errors).length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+          <h4 className="text-red-800 font-medium mb-2">Xatoliklarni tuzating:</h4>
+          <ul className="text-red-700 text-sm space-y-1">
+            {Object.values(errors).flat().map((error, index) => (
+              <li key={index}>• {error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </form>
   );
 };

@@ -5,39 +5,65 @@ import Modal from '../components/Common/Modal';
 import Button from '../components/Common/Button';
 import Input from '../components/Common/Input';
 import ApiService from '../services/api';
-import { UZBEK_MONTHS } from '../utils/constants';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, UZBEK_MONTHS, MESSAGES } from '../utils/constants';
 
 const Payments = () => {
   const [payments, setPayments] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [filterForm, setFilterForm] = useState({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear()
-  });
-  const [newPayment, setNewPayment] = useState({
+  const [formData, setFormData] = useState({
     student_id: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    amount_paid: '',
-    is_fully_paid: false,
-    comment: ''
+    amount: '',
+    payment_method: PAYMENT_METHODS.CASH,
+    description: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [filters, setFilters] = useState({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    student_id: ''
+  });
 
   useEffect(() => {
-    loadPayments();
     loadStudents();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Load payments when component mounts and when filters change
+    loadPayments();
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPayments = async () => {
     setLoading(true);
     try {
-      const data = await ApiService.getPayments(filterForm);
-      setPayments(data);
+      // Since there's no specific payments endpoint in our API,
+      // we'll simulate this by getting student payment data
+      const studentsData = await ApiService.getStudents();
+      const paymentsData = [];
+      
+      studentsData.forEach(student => {
+        if (student.payments) {
+          student.payments.forEach(payment => {
+            const paymentDate = new Date(payment.payment_date);
+            if (
+              (!filters.month || paymentDate.getMonth() + 1 === filters.month) &&
+              (!filters.year || paymentDate.getFullYear() === filters.year) &&
+              (!filters.student_id || student.id === parseInt(filters.student_id))
+            ) {
+              paymentsData.push({
+                ...payment,
+                student: student
+              });
+            }
+          });
+        }
+      });
+      
+      setPayments(paymentsData);
     } catch (error) {
-      setError('To\'lovlarni yuklashda xatolik');
+      setError('To\'lovlarni yuklashda xatolik: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -45,239 +71,352 @@ const Payments = () => {
 
   const loadStudents = async () => {
     try {
-      const data = await ApiService.searchStudents({});
-      setStudents(data);
+      const data = await ApiService.getStudents();
+      setStudents(data.filter(student => student.is_active));
     } catch (error) {
       console.error('O\'quvchilarni yuklashda xatolik:', error);
     }
   };
 
-  const handleCreatePayment = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
+    setSuccess('');
+    
     try {
-      await ApiService.createPayment({
-        ...newPayment,
-        amount_paid: parseFloat(newPayment.amount_paid)
-      });
+      const submitData = {
+        student_id: parseInt(formData.student_id),
+        amount: parseFloat(formData.amount),
+        payment_method: formData.payment_method,
+        description: formData.description
+      };
+      
+      await ApiService.createPayment(submitData);
+      setSuccess(MESSAGES.SUCCESS.CREATED);
       
       setShowModal(false);
       loadPayments();
       resetForm();
     } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const handleUpdatePayment = async (payment, isFullyPaid) => {
-    try {
-      await ApiService.updatePayment(payment.id, {
-        is_fully_paid: isFullyPaid,
-        comment: isFullyPaid ? 'To\'liq to\'landi' : 'Qisman to\'landi'
-      });
-      loadPayments();
-    } catch (error) {
-      setError('To\'lovni yangilashda xatolik');
+      setError(error.message || 'To\'lov qo\'shishda xatolik yuz berdi');
     }
   };
 
   const resetForm = () => {
-    setNewPayment({
+    setFormData({
       student_id: '',
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      amount_paid: '',
-      is_fully_paid: false,
-      comment: ''
+      amount: '',
+      payment_method: PAYMENT_METHODS.CASH,
+      description: ''
     });
     setError('');
+    setSuccess('');
   };
 
-  const handleFilter = (e) => {
-    e.preventDefault();
-    loadPayments();
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const getStudentName = (studentId) => {
-    const student = students.find(s => s.id === studentId);
-    return student?.user?.full_name || 'Noma\'lum';
+  const handleFilterChange = (e) => {
+    setFilters({
+      ...filters,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('uz-UZ').format(amount) + ' so\'m';
+  };
+
+  const getTotalAmount = () => {
+    return payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  };
+
+  const getSelectedStudent = () => {
+    return students.find(s => s.id === parseInt(formData.student_id));
   };
 
   const columns = [
-    { key: 'student_id', title: 'O\'quvchi', render: (studentId) => getStudentName(studentId) },
-    { key: 'month', title: 'Oy', render: (month) => UZBEK_MONTHS[month - 1] },
-    { key: 'year', title: 'Yil' },
-    { key: 'amount_paid', title: 'To\'langan summa', render: (amount) => `${amount.toLocaleString()} so'm` },
-    { key: 'is_fully_paid', title: 'Holati', render: (isFullyPaid) => (
-      <span className={`badge ${isFullyPaid ? 'badge-success' : 'badge-warning'}`}>
-        {isFullyPaid ? 'To\'liq' : 'Qisman'}
-      </span>
-    )},
-    { key: 'paid_at', title: 'To\'langan sana', render: (date) => 
-      new Date(date).toLocaleDateString('uz-UZ') 
+    {
+      key: 'student',
+      label: 'O\'quvchi',
+      render: (payment) => (
+        <div>
+          <div className="font-medium">
+            {payment.student?.first_name} {payment.student?.last_name}
+          </div>
+          <div className="text-sm text-gray-500">
+            {payment.student?.group?.name || '-'}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'amount',
+      label: 'Miqdor',
+      render: (payment) => (
+        <div className="font-medium text-green-600">
+          {formatCurrency(payment.amount)}
+        </div>
+      )
+    },
+    {
+      key: 'payment_method',
+      label: 'To\'lov usuli',
+      render: (payment) => (
+        <span className="badge">
+          {PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method}
+        </span>
+      )
+    },
+    {
+      key: 'payment_date',
+      label: 'To\'lov sanasi',
+      render: (payment) => new Date(payment.payment_date).toLocaleDateString('uz-UZ')
+    },
+    {
+      key: 'description',
+      label: 'Izoh',
+      render: (payment) => (
+        <div className="max-w-xs">
+          <span className="text-sm">{payment.description || '-'}</span>
+        </div>
+      )
     }
   ];
 
-  const actions = (payment) => (
-    <>
-      {!payment.is_fully_paid && (
-        <Button 
-          size="sm" 
-          variant="primary"
-          onClick={() => handleUpdatePayment(payment, true)}
-        >
-          To'liq deb belgilash
-        </Button>
-      )}
-      {payment.is_fully_paid && (
-        <Button 
-          size="sm"
-          onClick={() => handleUpdatePayment(payment, false)}
-        >
-          Qisman deb belgilash
-        </Button>
-      )}
-    </>
-  );
-
   return (
     <div>
-      <Card title="To'lovlar filtri">
-        <form onSubmit={handleFilter} className="grid grid-3">
-          <div className="form-group">
-            <label className="form-label">Oy</label>
-            <select
-              value={filterForm.month}
-              onChange={(e) => setFilterForm({...filterForm, month: e.target.value})}
-              className="form-select"
-            >
-              {UZBEK_MONTHS.map((month, index) => (
-                <option key={index} value={index + 1}>{month}</option>
-              ))}
-            </select>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="header-title">To'lovlar boshqaruvi</h1>
+        <Button onClick={() => setShowModal(true)}>
+          + Yangi to'lov
+        </Button>
+      </div>
+
+      {error && <div className="error mb-4">{error}</div>}
+      {success && <div className="success mb-4">{success}</div>}
+
+      {/* Filters & Statistics */}
+      <div className="grid grid-2 gap-6 mb-6">
+        {/* Filters */}
+        <Card title="Filtrlar">
+          <div className="grid grid-2 gap-4">
+            <div className="form-group">
+              <label className="form-label">Oy</label>
+              <select
+                name="month"
+                value={filters.month}
+                onChange={handleFilterChange}
+                className="form-select"
+              >
+                {UZBEK_MONTHS.map((month, index) => (
+                  <option key={index + 1} value={index + 1}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Yil</label>
+              <select
+                name="year"
+                value={filters.year}
+                onChange={handleFilterChange}
+                className="form-select"
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <Input
-            label="Yil"
-            type="number"
-            value={filterForm.year}
-            onChange={(e) => setFilterForm({...filterForm, year: e.target.value})}
-          />
-          
-          <div className="form-group">
-            <Button type="submit" variant="primary">Filtr</Button>
-          </div>
-        </form>
-      </Card>
-
-      <Card 
-        title="To'lovlar ro'yxati"
-        actions={
-          <Button 
-            variant="primary" 
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-          >
-            Yangi to'lov
-          </Button>
-        }
-      >
-        {error && <div className="error mb-4">{error}</div>}
-        
-        {loading ? (
-          <div className="loading">Yuklanmoqda...</div>
-        ) : (
-          <Table 
-            columns={columns}
-            data={payments}
-            actions={actions}
-          />
-        )}
-      </Card>
-
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title="Yangi to'lov qo'shish"
-      >
-        <form onSubmit={handleCreatePayment}>
           <div className="form-group">
             <label className="form-label">O'quvchi</label>
             <select
-              value={newPayment.student_id}
-              onChange={(e) => setNewPayment({...newPayment, student_id: e.target.value})}
+              name="student_id"
+              value={filters.student_id}
+              onChange={handleFilterChange}
               className="form-select"
-              required
             >
-              <option value="">O'quvchini tanlang</option>
-              {students.map(student => (
+              <option value="">Barcha o'quvchilar</option>
+              {students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.user?.full_name}
+                  {student.first_name} {student.last_name}
+                  {student.group && ` (${student.group.name})`}
                 </option>
               ))}
             </select>
           </div>
 
+          <Button
+            onClick={() => setFilters({
+              month: new Date().getMonth() + 1,
+              year: new Date().getFullYear(),
+              student_id: ''
+            })}
+            size="sm"
+          >
+            Filtrlarni tozalash
+          </Button>
+        </Card>
+
+        {/* Statistics */}
+        <Card title="Statistika">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Jami to'lovlar:</span>
+              <span className="font-bold text-lg">{payments.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Jami miqdor:</span>
+              <span className="font-bold text-lg text-green-600">
+                {formatCurrency(getTotalAmount())}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">O'rtacha to'lov:</span>
+              <span className="font-medium">
+                {payments.length > 0 
+                  ? formatCurrency(getTotalAmount() / payments.length)
+                  : '0 so\'m'
+                }
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Davr:</span>
+              <span className="font-medium">
+                {UZBEK_MONTHS[filters.month - 1]} {filters.year}
+              </span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <Table 
+          columns={columns} 
+          data={payments}
+          loading={loading}
+          emptyMessage="To'lovlar topilmadi"
+        />
+      </Card>
+
+      {/* Payment Modal */}
+      <Modal
+        show={showModal}
+        onClose={() => {
+          setShowModal(false);
+          resetForm();
+        }}
+        title="Yangi to'lov qo'shish"
+      >
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Oy</label>
+            <label className="form-label">O'quvchi *</label>
             <select
-              value={newPayment.month}
-              onChange={(e) => setNewPayment({...newPayment, month: e.target.value})}
+              name="student_id"
+              value={formData.student_id}
+              onChange={handleChange}
               className="form-select"
               required
             >
-              {UZBEK_MONTHS.map((month, index) => (
-                <option key={index} value={index + 1}>{month}</option>
+              <option value="">O'quvchini tanlang</option>
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.first_name} {student.last_name}
+                  {student.group && ` - ${student.group.name}`}
+                </option>
               ))}
             </select>
           </div>
 
-          <Input
-            label="Yil"
-            type="number"
-            value={newPayment.year}
-            onChange={(e) => setNewPayment({...newPayment, year: e.target.value})}
-            required
-          />
-
-          <Input
-            label="To'langan summa"
-            type="number"
-            value={newPayment.amount_paid}
-            onChange={(e) => setNewPayment({...newPayment, amount_paid: e.target.value})}
-            placeholder="500000"
-            required
-          />
-
-          <div className="form-group">
-            <label className="form-label">
-              <input
-                type="checkbox"
-                checked={newPayment.is_fully_paid}
-                onChange={(e) => setNewPayment({...newPayment, is_fully_paid: e.target.checked})}
+          <div className="grid grid-2 gap-4">
+            <div className="form-group">
+              <label className="form-label">Miqdor (so'm) *</label>
+              <Input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="Masalan: 500000"
+                required
+                min="0"
+                step="1000"
               />
-              {' '}To'liq to'landi
-            </label>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">To'lov usuli *</label>
+              <select
+                name="payment_method"
+                value={formData.payment_method}
+                onChange={handleChange}
+                className="form-select"
+                required
+              >
+                {Object.entries(PAYMENT_METHOD_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <Input
-            label="Izoh"
-            type="textarea"
-            value={newPayment.comment}
-            onChange={(e) => setNewPayment({...newPayment, comment: e.target.value})}
-          />
+          <div className="form-group">
+            <label className="form-label">Izoh</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="To'lov haqida qo'shimcha ma'lumot..."
+              className="form-textarea"
+              rows="3"
+            />
+          </div>
+
+          {/* Payment Preview */}
+          {formData.student_id && formData.amount && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-medium text-green-800 mb-2">To'lov ma'lumotlari:</h4>
+              <div className="text-sm text-green-700 space-y-1">
+                <div>
+                  <strong>O'quvchi:</strong> {getSelectedStudent()?.first_name} {getSelectedStudent()?.last_name}
+                </div>
+                <div>
+                  <strong>Miqdor:</strong> {formatCurrency(parseFloat(formData.amount) || 0)}
+                </div>
+                <div>
+                  <strong>Usul:</strong> {PAYMENT_METHOD_LABELS[formData.payment_method]}
+                </div>
+                <div>
+                  <strong>Sana:</strong> {new Date().toLocaleDateString('uz-UZ')}
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && <div className="error">{error}</div>}
 
-          <div className="flex gap-2 mt-4">
-            <Button type="submit" variant="primary">
-              Saqlash
-            </Button>
-            <Button onClick={() => setShowModal(false)}>
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setShowModal(false);
+                resetForm();
+              }}
+            >
               Bekor qilish
+            </Button>
+            <Button type="submit">
+              To'lovni saqlash
             </Button>
           </div>
         </form>

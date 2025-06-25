@@ -1,55 +1,46 @@
 import React from 'react';
 
-const Input = ({ 
-  label, 
-  type = 'text', 
-  value, 
-  onChange, 
-  placeholder = '',
+const Input = ({
+  type = 'text',
+  placeholder,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
+  name,
+  id,
   required = false,
+  disabled = false,
+  className = '',
   error = '',
-  className = ''
+  ...props
 }) => {
-  const inputClass = type === 'textarea' ? 'form-textarea' : 'form-input';
-  const classes = [inputClass, className].filter(Boolean).join(' ');
+  const inputClasses = [
+    'form-input',
+    error ? 'border-red-500' : '',
+    disabled ? 'opacity-50' : '',
+    className
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className="form-group">
-      {label && (
-        <label className="form-label">
-          {label}
-          {required && <span style={{ color: '#e53e3e' }}>*</span>}
-        </label>
+    <div className="w-full">
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        name={name}
+        id={id}
+        required={required}
+        disabled={disabled}
+        className={inputClasses}
+        {...props}
+      />
+      {error && (
+        <div className="text-red-500 text-sm mt-1">{error}</div>
       )}
-      {type === 'textarea' ? (
-        <textarea
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          required={required}
-          className={classes}
-        />
-      ) : type === 'select' ? (
-        <select
-          value={value}
-          onChange={onChange}
-          required={required}
-          className="form-select"
-        >
-          {placeholder && <option value="">{placeholder}</option>}
-          {/* Options will be passed as children */}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          required={required}
-          className={classes}
-        />
-      )}
-      {error && <div className="error">{error}</div>}
     </div>
   );
 };

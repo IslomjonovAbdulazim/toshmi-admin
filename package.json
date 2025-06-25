@@ -1,23 +1,38 @@
 {
-  "name": "admin-panel",
-  "version": "1.0.0",
+  "name": "school-admin-panel",
+  "version": "2.0.0",
   "private": true,
+  "description": "Modern admin panel for School Management System",
+  "keywords": [
+    "school",
+    "management",
+    "admin",
+    "education"
+  ],
+  "author": "School Management Team",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.0",
+    "react-router-dom": "^6.30.1",
     "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src/**/*.{js,jsx}",
+    "format": "prettier --write src/**/*.{js,jsx,css,md}"
   },
   "eslintConfig": {
     "extends": [
-      "react-app"
-    ]
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-console": "off"
+    }
   },
   "browserslist": {
     "production": [
@@ -31,5 +46,10 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "https://islomjonovabdulazim-toshmi-backend-0914.twc1.net",
+  "homepage": ".",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
 }
