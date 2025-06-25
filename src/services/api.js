@@ -51,25 +51,15 @@ class ApiService {
         throw new Error('Serverga ulanishda xatolik. Backend server ishlamayotgan bo\'lishi mumkin.');
       }
       
-      // CORS errors
-      if (error.message.includes('CORS')) {
-        throw new Error('CORS xatoligi. Backend CORS sozlamalarini tekshiring.');
-      }
-      
       throw error;
     }
   }
 
   // File upload method
-  async uploadFile(endpoint, file, additionalData = {}) {
+  async uploadFile(endpoint, file) {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     const formData = new FormData();
     formData.append('file', file);
-    
-    // Add additional data
-    Object.keys(additionalData).forEach(key => {
-      formData.append(key, additionalData[key]);
-    });
 
     return this.request(endpoint, {
       method: 'POST',
@@ -107,28 +97,6 @@ class ApiService {
     });
   }
 
-  // ===== NOTIFICATION ENDPOINTS =====
-  
-  async getNotifications() {
-    return this.request('/auth/notifications');
-  }
-
-  async markNotificationRead(id) {
-    return this.request(`/auth/notifications/${id}/read`, {
-      method: 'PUT'
-    });
-  }
-
-  async markAllNotificationsRead() {
-    return this.request('/auth/notifications/mark-all-read', {
-      method: 'PUT'
-    });
-  }
-
-  async getUnreadCount() {
-    return this.request('/auth/notifications/unread-count');
-  }
-
   // ===== STUDENT MANAGEMENT =====
   
   async getStudents() {
@@ -137,6 +105,25 @@ class ApiService {
 
   async getStudent(id) {
     return this.request(`/admin/students/${id}`);
+  }
+
+  async getStudentDetails(id) {
+    const student = await this.getStudent(id);
+    // Get additional details like grades, attendance
+    try {
+      const [grades, attendance] = await Promise.all([
+        this.request(`/admin/students/${id}/grades`).catch(() => null),
+        this.request(`/admin/students/${id}/attendance`).catch(() => null)
+      ]);
+      
+      return {
+        ...student,
+        recent_grades: grades,
+        attendance_summary: attendance
+      };
+    } catch (error) {
+      return student;
+    }
   }
 
   async createStudent(data) {
@@ -167,6 +154,12 @@ class ApiService {
 
   async getTeacher(id) {
     return this.request(`/admin/teachers/${id}`);
+  }
+
+  async getTeacherDetails(id) {
+    const teacher = await this.getTeacher(id);
+    // Get assigned groups and subjects
+    return teacher;
   }
 
   async createTeacher(data) {
@@ -275,13 +268,19 @@ class ApiService {
     });
   }
 
-  // ===== TEACHER ASSIGNMENT =====
+  // ===== TEACHER ASSIGNMENT (Simplified) =====
   
   async assignTeacher(data) {
     return this.request('/admin/assign-teacher', {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  }
+
+  async getTeacherAssignments() {
+    // Get all teachers with their assignments
+    const teachers = await this.getTeachers();
+    return teachers.filter(teacher => teacher.assigned_subjects && teacher.assigned_subjects.length > 0);
   }
 
   // ===== PAYMENT MANAGEMENT =====
@@ -291,6 +290,11 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  }
+
+  async getPayments(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return this.request(`/admin/payments?${params}`);
   }
 
   // ===== NEWS MANAGEMENT =====
@@ -359,18 +363,6 @@ class ApiService {
     return this.uploadFile('/files/profile-picture', file);
   }
 
-  async uploadHomeworkFile(homeworkId, file) {
-    return this.uploadFile(`/files/homework/${homeworkId}/upload`, file);
-  }
-
-  async uploadExamFile(examId, file) {
-    return this.uploadFile(`/files/exam/${examId}/upload`, file);
-  }
-
-  async uploadNewsImage(newsId, file) {
-    return this.uploadFile(`/files/news/${newsId}/upload-image`, file);
-  }
-
   async downloadFile(fileId) {
     return this.request(`/files/${fileId}`);
   }
@@ -381,23 +373,53 @@ class ApiService {
     });
   }
 
-  // ===== UTILITY METHODS =====
+  // ===== DASHBOARD & STATISTICS =====
   
-  // Get system health
-  async getHealth() {
-    return this.request('/health');
-  }
-
-  // Get system stats
-  async getStats() {
+  async getDashboardStats() {
     return this.request('/stats');
   }
 
-  // Initialize database (if needed)
+  async getSystemHealth() {
+    return this.request('/health');
+  }
+
+  // ===== UTILITY METHODS =====
+  
   async initializeDatabase() {
     return this.request('/init-db', {
       method: 'POST'
     });
+  }
+
+  // Get academic summary for a student
+  async getStudentAcademicSummary(studentId) {
+    try {
+      const [homework, exams, attendance] = await Promise.all([
+        this.request(`/admin/students/${studentId}/homework-grades`).catch(() => []),
+        this.request(`/admin/students/${studentId}/exam-grades`).catch(() => []),
+        this.request(`/admin/students/${studentId}/attendance`).catch(() => [])
+      ]);
+
+      return {
+        homework_grades: homework,
+        exam_grades: exams,
+        attendance_records: attendance
+      };
+    } catch (error) {
+      console.error('Error getting student academic summary:', error);
+      return null;
+    }
+  }
+
+  // Get teacher's assigned classes
+  async getTeacherAssignedClasses(teacherId) {
+    try {
+      const teacher = await this.getTeacher(teacherId);
+      return teacher.assigned_subjects || [];
+    } catch (error) {
+      console.error('Error getting teacher assignments:', error);
+      return [];
+    }
   }
 }
 

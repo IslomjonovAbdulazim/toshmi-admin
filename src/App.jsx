@@ -3,19 +3,22 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 // Layout Components
 import Layout from './components/Layout/Layout';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
+import StudentDetail from './pages/StudentDetail';
 import Teachers from './pages/Teachers';
+import TeacherDetail from './pages/TeacherDetail';
 import Parents from './pages/Parents';
 import Groups from './pages/Groups';
 import Subjects from './pages/Subjects';
-import Assignments from './pages/Assignments';
 import Schedule from './pages/Schedule';
 import Payments from './pages/Payments';
 import News from './pages/News';
+import Profile from './pages/Profile';
 
 // Hooks
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -41,35 +44,39 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected Admin Routes */}
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <Layout>
-                <Routes>
-                  <Route index element={<Dashboard />} />
-                  <Route path="students" element={<Students />} />
-                  <Route path="teachers" element={<Teachers />} />
-                  <Route path="parents" element={<Parents />} />
-                  <Route path="groups" element={<Groups />} />
-                  <Route path="subjects" element={<Subjects />} />
-                  <Route path="assignments" element={<Assignments />} />
-                  <Route path="schedule" element={<Schedule />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="news" element={<News />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Layout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Protected Admin Routes */}
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route index element={<Dashboard />} />
+                    <Route path="students" element={<Students />} />
+                    <Route path="students/:id" element={<StudentDetail />} />
+                    <Route path="teachers" element={<Teachers />} />
+                    <Route path="teachers/:id" element={<TeacherDetail />} />
+                    <Route path="parents" element={<Parents />} />
+                    <Route path="groups" element={<Groups />} />
+                    <Route path="subjects" element={<Subjects />} />
+                    <Route path="schedule" element={<Schedule />} />
+                    <Route path="payments" element={<Payments />} />
+                    <Route path="news" element={<News />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,7 +1,7 @@
 // API Configuration
 export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-// Admin Navigation Menu
+// Admin Navigation Menu (Removed notifications and assignments)
 export const MENU_ITEMS = [
   {
     path: '/',
@@ -34,11 +34,6 @@ export const MENU_ITEMS = [
     icon: '📚'
   },
   {
-    path: '/assignments',
-    label: 'O\'qituvchi tayinlash',
-    icon: '📋'
-  },
-  {
     path: '/schedule',
     label: 'Dars jadvali',
     icon: '📅'
@@ -52,6 +47,11 @@ export const MENU_ITEMS = [
     path: '/news',
     label: 'Yangiliklar',
     icon: '📰'
+  },
+  {
+    path: '/profile',
+    label: 'Profil',
+    icon: '👤'
   }
 ];
 
@@ -138,48 +138,6 @@ export const COMMON_SUBJECTS = [
   'Texnologiya'
 ];
 
-// Grade Levels
-export const GRADE_LEVELS = [
-  { value: 1, label: '1-sinf' },
-  { value: 2, label: '2-sinf' },
-  { value: 3, label: '3-sinf' },
-  { value: 4, label: '4-sinf' },
-  { value: 5, label: '5-sinf' },
-  { value: 6, label: '6-sinf' },
-  { value: 7, label: '7-sinf' },
-  { value: 8, label: '8-sinf' },
-  { value: 9, label: '9-sinf' },
-  { value: 10, label: '10-sinf' },
-  { value: 11, label: '11-sinf' }
-];
-
-// File Upload Configuration
-export const FILE_UPLOAD = {
-  MAX_SIZE: 10 * 1024 * 1024, // 10MB
-  ALLOWED_TYPES: {
-    IMAGE: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    DOCUMENT: [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
-    ],
-    ARCHIVE: ['application/zip', 'application/x-rar-compressed']
-  }
-};
-
-// Pagination Settings
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 20,
-  PAGE_SIZE_OPTIONS: [10, 20, 50, 100]
-};
-
-// Uzbek Months
-export const UZBEK_MONTHS = [
-  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
-];
-
 // Time slots for schedule
 export const TIME_SLOTS = [
   '08:00', '08:45', '09:30', '10:15', '11:00', '11:45',
@@ -200,9 +158,7 @@ export const MESSAGES = {
     NETWORK: 'Tarmoq xatoligi',
     UNAUTHORIZED: 'Ruxsat berilmagan',
     NOT_FOUND: 'Topilmadi',
-    VALIDATION: 'Ma\'lumotlar noto\'g\'ri',
-    FILE_SIZE: 'Fayl hajmi juda katta',
-    FILE_TYPE: 'Fayl turi qo\'llab-quvvatlanmaydi'
+    VALIDATION: 'Ma\'lumotlar noto\'g\'ri'
   }
 };
 
@@ -211,16 +167,7 @@ export const STORAGE_KEYS = {
   TOKEN: 'token',
   USER: 'user',
   THEME: 'theme',
-  LANGUAGE: 'language',
-  SIDEBAR_COLLAPSED: 'sidebar_collapsed'
-};
-
-// Notification Types
-export const NOTIFICATION_TYPES = {
-  SUCCESS: 'success',
-  ERROR: 'error',
-  WARNING: 'warning',
-  INFO: 'info'
+  LANGUAGE: 'language'
 };
 
 // Date Format
@@ -232,7 +179,30 @@ export const APP_CONFIG = {
   NAME: 'Maktab Boshqaruv Tizimi',
   VERSION: '2.0.0',
   AUTHOR: 'School Management Team',
-  DEFAULT_LANGUAGE: 'uz',
-  REFRESH_INTERVAL: 30000, // 30 seconds
-  SESSION_TIMEOUT: 3600000 // 1 hour
+  DEFAULT_LANGUAGE: 'uz'
+};
+
+// Grade helpers
+export const GRADE_COLORS = {
+  EXCELLENT: '#10B981', // 90-100%
+  GOOD: '#059669',      // 80-89%
+  AVERAGE: '#F59E0B',   // 70-79%
+  POOR: '#EF4444',      // 60-69%
+  FAIL: '#DC2626'       // Below 60%
+};
+
+export const getGradeColor = (percentage) => {
+  if (percentage >= 90) return GRADE_COLORS.EXCELLENT;
+  if (percentage >= 80) return GRADE_COLORS.GOOD;
+  if (percentage >= 70) return GRADE_COLORS.AVERAGE;
+  if (percentage >= 60) return GRADE_COLORS.POOR;
+  return GRADE_COLORS.FAIL;
+};
+
+export const getGradeLetter = (percentage) => {
+  if (percentage >= 90) return 'A';
+  if (percentage >= 80) return 'B';
+  if (percentage >= 70) return 'C';
+  if (percentage >= 60) return 'D';
+  return 'F';
 };

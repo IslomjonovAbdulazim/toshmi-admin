@@ -1,27 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import ApiService from '../../services/api';
 
 const Header = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  useEffect(() => {
-    loadUnreadCount();
-    // Set up interval to check for new notifications
-    const interval = setInterval(loadUnreadCount, 30000); // Every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadUnreadCount = async () => {
-    try {
-      const data = await ApiService.getUnreadCount();
-      setUnreadCount(data.count || 0);
-    } catch (error) {
-      console.error('Failed to load notification count:', error);
-    }
-  };
 
   const handleLogout = () => {
     if (window.confirm('Tizimdan chiqishni tasdiqlaysizmi?')) {
@@ -40,6 +24,11 @@ const Header = ({ onMenuClick }) => {
     return user.phone || 'Admin';
   };
 
+  const handleProfileClick = () => {
+    setShowProfileMenu(false);
+    navigate('/profile');
+  };
+
   return (
     <header className="header">
       {/* Mobile menu button */}
@@ -53,21 +42,15 @@ const Header = ({ onMenuClick }) => {
 
       {/* Header title */}
       <div className="header-title">
-        Boshqaruv paneli
+        Admin Paneli
       </div>
 
       {/* Header actions */}
       <div className="header-actions">
-        {/* Notifications */}
-        <div className="relative">
-          <button className="btn btn-sm">
-            🔔
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+        {/* System status indicator */}
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+          <span className="hidden md:inline">Faol</span>
         </div>
 
         {/* User menu */}
@@ -76,51 +59,71 @@ const Header = ({ onMenuClick }) => {
             className="user-info"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           >
-            <span>👤 {formatUserName(user)}</span>
-            <span className="text-xs">({user?.role})</span>
-            <span className="ml-1">▼</span>
+            {/* User avatar */}
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
+              {user?.profile_image_id ? (
+                <img 
+                  src={`/files/${user.profile_image_id}`} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-medium">
+                  {user?.first_name?.charAt(0) || 'A'}
+                </span>
+              )}
+            </div>
+            
+            {/* User info */}
+            <div className="hidden md:block text-left">
+              <div className="font-medium">{formatUserName(user)}</div>
+              <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
+            </div>
+            
+            <span className="ml-2 text-gray-400">▼</span>
           </button>
 
           {/* Dropdown menu */}
           {showProfileMenu && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+            <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
               <div className="py-1">
-                <div className="px-4 py-2 text-sm text-gray-500 border-b">
-                  {formatUserName(user)}
-                  <div className="text-xs">{user?.phone}</div>
+                {/* User info header */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="font-medium text-gray-900">{formatUserName(user)}</div>
+                  <div className="text-sm text-gray-500">{user?.phone}</div>
+                  <div className="text-xs text-gray-400 capitalize">{user?.role}</div>
                 </div>
                 
+                {/* Menu items */}
                 <button
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                  onClick={() => {
-                    setShowProfileMenu(false);
-                    // Navigate to profile page if exists
-                    console.log('Navigate to profile');
-                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                  onClick={handleProfileClick}
                 >
-                  👤 Profil
+                  <span className="mr-3">👤</span>
+                  Profil sozlamalari
                 </button>
                 
                 <button
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                   onClick={() => {
                     setShowProfileMenu(false);
-                    // Navigate to settings page if exists
-                    console.log('Navigate to settings');
+                    navigate('/');
                   }}
                 >
-                  ⚙️ Sozlamalar
+                  <span className="mr-3">🏠</span>
+                  Bosh sahifa
                 </button>
-                
-                <div className="border-t">
+
+                <div className="border-t border-gray-100 mt-1">
                   <button
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
                     onClick={() => {
                       setShowProfileMenu(false);
                       handleLogout();
                     }}
                   >
-                    🚪 Chiqish
+                    <span className="mr-3">🚪</span>
+                    Tizimdan chiqish
                   </button>
                 </div>
               </div>
