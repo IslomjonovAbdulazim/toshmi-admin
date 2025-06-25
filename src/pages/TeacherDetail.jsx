@@ -29,7 +29,7 @@ const TeacherDetail = () => {
     try {
       const [teacherData, assignmentsData, schedulesData] = await Promise.all([
         ApiService.getTeacherDetails(id),
-        ApiService.getTeacherAssignedClasses(id),
+        ApiService.getTeacherAssignedClasses(id).catch(() => []),
         ApiService.getSchedules().then(schedules => 
           schedules.filter(s => s.teacher_id === parseInt(id))
         ).catch(() => [])
@@ -47,441 +47,341 @@ const TeacherDetail = () => {
 
   const getDayName = (dayNumber) => {
     const day = WEEKDAYS.find(d => d.value === dayNumber);
-    return day ? day.label : '-';
+    return day ? day.label : 'Noma\'lum';
   };
 
-  const getWeeklySchedule = () => {
-    const weeklySchedule = {};
-    WEEKDAYS.forEach(day => {
-      weeklySchedule[day.value] = schedules.filter(s => s.day === day.value)
-        .sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const getTimeSlots = () => {
+    const slots = {};
+    schedules.forEach(schedule => {
+      const day = schedule.day_of_week;
+      if (!slots[day]) slots[day] = [];
+      slots[day].push({
+        time: `${schedule.start_time} - ${schedule.end_time}`,
+        subject: schedule.subject_name,
+        group: schedule.group_name,
+        room: schedule.room || 'Xona ko\'rsatilmagan'
+      });
     });
-    return weeklySchedule;
+    
+    // Sort time slots for each day
+    Object.keys(slots).forEach(day => {
+      slots[day].sort((a, b) => a.time.localeCompare(b.time));
+    });
+    
+    return slots;
   };
 
-  const getTotalWeeklyHours = () => {
-    return schedules.length * 1; // Assuming each class is 1 hour
-  };
+  const getWorkloadStats = () => {
+    const uniqueGroups = new Set();
+    const uniqueSubjects = new Set();
+    let totalHours = 0;
 
-  const getUniqueSubjects = () => {
-    const subjects = new Set();
     assignments.forEach(assignment => {
-      if (assignment.subject?.name) {
-        subjects.add(assignment.subject.name);
-      }
+      uniqueGroups.add(assignment.group_id);
+      uniqueSubjects.add(assignment.subject_id);
     });
-    return Array.from(subjects);
-  };
 
-  const getUniqueGroups = () => {
-    const groups = new Set();
-    assignments.forEach(assignment => {
-      if (assignment.group?.name) {
-        groups.add(assignment.group.name);
-      }
+    schedules.forEach(schedule => {
+      const start = new Date(`2000-01-01 ${schedule.start_time}`);
+      const end = new Date(`2000-01-01 ${schedule.end_time}`);
+      totalHours += (end - start) / (1000 * 60 * 60); // Convert to hours
     });
-    return Array.from(groups);
+
+    return {
+      groups: uniqueGroups.size,
+      subjects: uniqueSubjects.size,
+      weeklyHours: totalHours,
+      classes: schedules.length
+    };
   };
 
   const tabs = [
     { id: 'overview', label: 'Umumiy ma\'lumot', icon: '📋' },
-    { id: 'assignments', label: 'Tayinlangan fanlar', icon: '📚' },
-    { id: 'schedule', label: 'Dars jadvali', icon: '📅' },
-    { id: 'performance', label: 'Statistika', icon: '📊' }
+    { id: 'assignments', label: 'Tayinlovlar', icon: '📚' },
+    { id: 'schedule', label: 'Dars jadvali', icon: '📅' }
   ];
 
   if (loading) return <Loading size="large" text="O'qituvchi ma'lumotlari yuklanmoqda..." />;
   if (error) return <div className="error">{error}</div>;
   if (!teacher) return <div className="error">O'qituvchi topilmadi</div>;
 
-  const weeklySchedule = getWeeklySchedule();
+  const workloadStats = getWorkloadStats();
+  const timeSlots = getTimeSlots();
 
   return (
-    <div>
+    <div className="teacher-detail">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <button 
-            onClick={() => navigate('/teachers')}
-            className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
-          >
-            ← O'qituvchilar ro'yxatiga qaytish
-          </button>
-          <h1 className="header-title">
-            {teacher.first_name} {teacher.last_name}
-          </h1>
-          <p className="text-gray-600">
-            O'qituvchi • ID: {teacher.id}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowAssignModal(true)}>
-            Fan tayinlash
-          </Button>
-          <Button onClick={() => setShowEditModal(true)}>
+      <div className="detail-header">
+        <Button variant="secondary" onClick={() => navigate('/teachers')}>
+          ← Orqaga
+        </Button>
+        <div className="header-actions">
+          <Button variant="secondary" onClick={() => setShowEditModal(true)}>
             Tahrirlash
           </Button>
-          <Button 
-            variant="secondary"
-            onClick={() => window.print()}
-          >
-            📄 Chop etish
+          <Button onClick={() => setShowAssignModal(true)}>
+            Yangi tayinlov
           </Button>
         </div>
       </div>
 
-      {/* Teacher Overview Card */}
-      <Card className="mb-6">
-        <div className="grid grid-3 gap-6">
-          {/* Basic Info */}
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-2xl">
-              {teacher.profile_image_id ? (
-                <img 
-                  src={`/files/${teacher.profile_image_id}`} 
-                  alt="Profile" 
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-green-600">
-                  {teacher.first_name?.charAt(0)}
-                </span>
-              )}
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">
-                {teacher.first_name} {teacher.last_name}
-              </h3>
-              <p className="text-gray-600">{teacher.specialization || 'Mutaxassislik ko\'rsatilmagan'}</p>
-              <span className={`badge ${teacher.is_active ? 'badge-success' : 'badge-danger'}`}>
-                {teacher.is_active ? 'Faol' : 'Faol emas'}
+      {/* Teacher Profile Card */}
+      <Card className="teacher-profile">
+        <div className="profile-header">
+          <div className="profile-avatar">
+            {teacher.profile_picture ? (
+              <img src={teacher.profile_picture} alt={teacher.first_name} />
+            ) : (
+              <div className="avatar-placeholder">
+                {teacher.first_name[0]}{teacher.last_name[0]}
+              </div>
+            )}
+          </div>
+          <div className="profile-info">
+            <h1>{teacher.first_name} {teacher.last_name}</h1>
+            <div className="profile-meta">
+              <span className={`status ${teacher.is_active ? 'active' : 'inactive'}`}>
+                {teacher.is_active ? 'Faol' : 'Nofaol'}
+              </span>
+              <span className="join-date">
+                Qo'shilgan: {formatDate(teacher.created_at)}
               </span>
             </div>
           </div>
+        </div>
 
-          {/* Contact Info */}
-          <div>
-            <h4 className="font-medium mb-2">Aloqa ma'lumotlari</h4>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-gray-600">Telefon:</span>
-                <span className="ml-2">
-                  {teacher.phone ? formatPhoneNumber(teacher.phone) : '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Email:</span>
-                <span className="ml-2">{teacher.email || '-'}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Qo'shilgan:</span>
-                <span className="ml-2">{formatDate(teacher.created_at)}</span>
-              </div>
-            </div>
+        <div className="profile-contact">
+          <div className="contact-item">
+            <span className="contact-label">Telefon:</span>
+            <span className="contact-value">{formatPhoneNumber(teacher.phone)}</span>
           </div>
-
-          {/* Work Info */}
-          <div>
-            <h4 className="font-medium mb-2">Ish ma'lumotlari</h4>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-gray-600">Fanlar soni:</span>
-                <span className="ml-2 font-medium">{getUniqueSubjects().length}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Sinflar soni:</span>
-                <span className="ml-2 font-medium">{getUniqueGroups().length}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Haftalik darslar:</span>
-                <span className="ml-2 font-medium">{getTotalWeeklyHours()} soat</span>
-              </div>
-            </div>
+          <div className="contact-item">
+            <span className="contact-label">Email:</span>
+            <span className="contact-value">{teacher.email || 'Kiritilmagan'}</span>
+          </div>
+          <div className="contact-item">
+            <span className="contact-label">Manzil:</span>
+            <span className="contact-value">{teacher.address || 'Kiritilmagan'}</span>
           </div>
         </div>
       </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-4 gap-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-number text-blue-600">{assignments.length}</div>
-          <div className="stat-label">Jami tayinlashlar</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-green-600">{getUniqueSubjects().length}</div>
-          <div className="stat-label">Fanlar</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-purple-600">{getUniqueGroups().length}</div>
-          <div className="stat-label">Sinflar</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-orange-600">{getTotalWeeklyHours()}</div>
-          <div className="stat-label">Haftalik soatlar</div>
-        </div>
+      {/* Workload Statistics */}
+      <div className="stats-grid">
+        <Card className="stat-card groups">
+          <div className="stat-icon">👥</div>
+          <div className="stat-content">
+            <div className="stat-number">{workloadStats.groups}</div>
+            <div className="stat-label">Guruhlar</div>
+          </div>
+        </Card>
+        
+        <Card className="stat-card subjects">
+          <div className="stat-icon">📚</div>
+          <div className="stat-content">
+            <div className="stat-number">{workloadStats.subjects}</div>
+            <div className="stat-label">Fanlar</div>
+          </div>
+        </Card>
+        
+        <Card className="stat-card hours">
+          <div className="stat-icon">⏰</div>
+          <div className="stat-content">
+            <div className="stat-number">{workloadStats.weeklyHours}h</div>
+            <div className="stat-label">Haftalik soatlar</div>
+          </div>
+        </Card>
+        
+        <Card className="stat-card classes">
+          <div className="stat-icon">📖</div>
+          <div className="stat-content">
+            <div className="stat-number">{workloadStats.classes}</div>
+            <div className="stat-label">Darslar</div>
+          </div>
+        </Card>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* Tabs */}
+      <Card>
+        <div className="tabs-header">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="tab-icon">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-2 gap-6">
-          <Card title="Tayinlangan fanlar">
-            {assignments.length > 0 ? (
-              <div className="space-y-3">
-                {assignments.map((assignment, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                    <div>
-                      <div className="font-medium">{assignment.subject?.name}</div>
-                      <div className="text-sm text-gray-600">
-                        {assignment.group?.name} • {assignment.group?.academic_year}
-                      </div>
-                    </div>
-                    <span className="badge">{assignment.subject?.code}</span>
+        <div className="tab-content">
+          {activeTab === 'overview' && (
+            <div className="overview-content">
+              <div className="info-section">
+                <h3>Shaxsiy ma'lumotlar</h3>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <label>To'liq ismi:</label>
+                    <span>{teacher.first_name} {teacher.last_name}</span>
                   </div>
-                ))}
+                  <div className="info-item">
+                    <label>Telefon:</label>
+                    <span>{formatPhoneNumber(teacher.phone)}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Email:</label>
+                    <span>{teacher.email || 'Kiritilmagan'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Manzil:</label>
+                    <span>{teacher.address || 'Kiritilmagan'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Tug'ilgan sana:</label>
+                    <span>{teacher.birth_date ? formatDate(teacher.birth_date) : 'Kiritilmagan'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Holat:</label>
+                    <span className={`status ${teacher.is_active ? 'active' : 'inactive'}`}>
+                      {teacher.is_active ? 'Faol' : 'Nofaol'}
+                    </span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <div className="text-4xl mb-2">📚</div>
-                <p>Hali fanlar tayinlanmagan</p>
-              </div>
-            )}
-          </Card>
 
-          <Card title="Bugungi darslar">
-            {(() => {
-              const today = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1; // Convert to our format
-              const todayClasses = weeklySchedule[today] || [];
-              
-              return todayClasses.length > 0 ? (
-                <div className="space-y-3">
-                  {todayClasses.map((schedule, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded">
-                      <div>
-                        <div className="font-medium">{schedule.subject?.name}</div>
-                        <div className="text-sm text-gray-600">
-                          {schedule.group?.name} • {schedule.room || 'Xona ko\'rsatilmagan'}
-                        </div>
+              <div className="summary-section">
+                <h3>Ish yuklash xulosasi</h3>
+                <div className="summary-cards">
+                  <div className="summary-card">
+                    <div className="summary-title">Guruhlar</div>
+                    <div className="summary-value">{workloadStats.groups}</div>
+                    <div className="summary-desc">tayinlangan guruhlar</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-title">Fanlar</div>
+                    <div className="summary-value">{workloadStats.subjects}</div>
+                    <div className="summary-desc">o'qitiladigan fanlar</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-title">Soatlar</div>
+                    <div className="summary-value">{workloadStats.weeklyHours}</div>
+                    <div className="summary-desc">haftalik dars soatlari</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'assignments' && (
+            <div className="assignments-content">
+              <div className="content-header">
+                <h3>Tayinlangan fanlar va guruhlar</h3>
+                <Button size="small" onClick={() => setShowAssignModal(true)}>
+                  Yangi tayinlov
+                </Button>
+              </div>
+
+              {assignments.length > 0 ? (
+                <div className="assignments-grid">
+                  {assignments.map((assignment, index) => (
+                    <div key={index} className="assignment-card">
+                      <div className="assignment-header">
+                        <h4>{assignment.subject_name}</h4>
+                        <span className="group-badge">{assignment.group_name}</span>
                       </div>
-                      <div className="text-right">
-                        <div className="font-medium">
-                          {schedule.start_time} - {schedule.end_time}
+                      <div className="assignment-details">
+                        <div className="detail-item">
+                          <span className="detail-label">Guruh:</span>
+                          <span className="detail-value">{assignment.group_name}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">O'quvchilar:</span>
+                          <span className="detail-value">{assignment.students_count || 0} ta</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">Tayinlangan:</span>
+                          <span className="detail-value">{formatDate(assignment.created_at)}</span>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-4xl mb-2">📅</div>
-                  <p>Bugun darslar yo'q</p>
+                <div className="no-data">
+                  <div className="no-data-icon">📚</div>
+                  <p>Hech qanday tayinlov topilmadi</p>
+                  <Button onClick={() => setShowAssignModal(true)}>
+                    Birinchi tayinlovni yaratish
+                  </Button>
                 </div>
-              );
-            })()}
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'assignments' && (
-        <Card title="Barcha tayinlashlar">
-          {assignments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Fan</th>
-                    <th>Fan kodi</th>
-                    <th>Sinf</th>
-                    <th>O'quv yili</th>
-                    <th>Tayinlangan sana</th>
-                    <th>Amallar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assignments.map((assignment, index) => (
-                    <tr key={index}>
-                      <td className="font-medium">{assignment.subject?.name}</td>
-                      <td>
-                        <span className="badge">{assignment.subject?.code}</span>
-                      </td>
-                      <td>{assignment.group?.name}</td>
-                      <td>{assignment.group?.academic_year}</td>
-                      <td>{formatDate(assignment.created_at)}</td>
-                      <td>
-                        <Button size="sm" variant="danger">
-                          Bekor qilish
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              <div className="text-4xl mb-2">📚</div>
-              <p>Hali fanlar tayinlanmagan</p>
-              <Button className="mt-4" onClick={() => setShowAssignModal(true)}>
-                Fan tayinlash
-              </Button>
+              )}
             </div>
           )}
-        </Card>
-      )}
 
-      {activeTab === 'schedule' && (
-        <Card title="Haftalik dars jadvali">
-          {schedules.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Kun</th>
-                    <th>Vaqt</th>
-                    <th>Fan</th>
-                    <th>Sinf</th>
-                    <th>Xona</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {WEEKDAYS.map(day => {
-                    const dayClasses = weeklySchedule[day.value] || [];
-                    return dayClasses.length > 0 ? (
-                      dayClasses.map((schedule, index) => (
-                        <tr key={`${day.value}-${index}`}>
-                          <td>
-                            {index === 0 && (
-                              <span className="font-medium">{day.label}</span>
-                            )}
-                          </td>
-                          <td>{schedule.start_time} - {schedule.end_time}</td>
-                          <td className="font-medium">{schedule.subject?.name}</td>
-                          <td>{schedule.group?.name}</td>
-                          <td>{schedule.room || '-'}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr key={day.value}>
-                        <td>
-                          <span className="font-medium text-gray-400">{day.label}</span>
-                        </td>
-                        <td colSpan="4" className="text-gray-400 text-center">
-                          Darslar yo'q
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              <div className="text-4xl mb-2">📅</div>
-              <p>Dars jadvali tuzilmagan</p>
-            </div>
-          )}
-        </Card>
-      )}
+          {activeTab === 'schedule' && (
+            <div className="schedule-content">
+              <h3>Haftalik dars jadvali</h3>
 
-      {activeTab === 'performance' && (
-        <div className="grid grid-2 gap-6">
-          <Card title="Ish yuklash statistikasi">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Jami tayinlashlar:</span>
-                <span className="font-bold text-lg">{assignments.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Fanlar soni:</span>
-                <span className="font-bold text-lg">{getUniqueSubjects().length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Sinflar soni:</span>
-                <span className="font-bold text-lg">{getUniqueGroups().length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Haftalik darslar:</span>
-                <span className="font-bold text-lg">{getTotalWeeklyHours()} soat</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card title="Fanlar bo'yicha taqsimot">
-            {getUniqueSubjects().length > 0 ? (
-              <div className="space-y-3">
-                {getUniqueSubjects().map((subject, index) => {
-                  const subjectAssignments = assignments.filter(a => a.subject?.name === subject);
-                  return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                      <span className="font-medium">{subject}</span>
-                      <span className="badge badge-success">
-                        {subjectAssignments.length} sinf
-                      </span>
+              {Object.keys(timeSlots).length > 0 ? (
+                <div className="schedule-grid">
+                  {WEEKDAYS.map(day => (
+                    <div key={day.value} className="day-schedule">
+                      <div className="day-header">
+                        <h4>{day.label}</h4>
+                        <span className="day-count">
+                          {timeSlots[day.value]?.length || 0} dars
+                        </span>
+                      </div>
+                      
+                      <div className="day-classes">
+                        {timeSlots[day.value]?.length > 0 ? (
+                          timeSlots[day.value].map((slot, index) => (
+                            <div key={index} className="class-slot">
+                              <div className="slot-time">{slot.time}</div>
+                              <div className="slot-subject">{slot.subject}</div>
+                              <div className="slot-group">{slot.group}</div>
+                              <div className="slot-room">{slot.room}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="no-classes">Dars yo'q</div>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <p>Ma'lumotlar yo'q</p>
-              </div>
-            )}
-          </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="no-data">
+                  <div className="no-data-icon">📅</div>
+                  <p>Dars jadvali topilmadi</p>
+                  <p>O'qituvchi uchun dars jadvali tuzilmagan</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </Card>
 
-      {/* Modals */}
+      {/* Edit Modal */}
       <Modal
         show={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="O'qituvchini tahrirlash"
       >
-        <p>O'qituvchi tahrirlash funksiyasi bu yerda bo'ladi...</p>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Bekor qilish
-          </Button>
-          <Button onClick={() => setShowEditModal(false)}>
-            Saqlash
-          </Button>
-        </div>
+        <p>O'qituvchi tahrirlash formasi bu yerda bo'ladi</p>
+        {/* TeacherForm component will be here */}
       </Modal>
 
+      {/* Assignment Modal */}
       <Modal
         show={showAssignModal}
         onClose={() => setShowAssignModal(false)}
-        title="Fan tayinlash"
+        title="Yangi tayinlov"
       >
-        <p>Fan tayinlash funksiyasi bu yerda bo'ladi...</p>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
-            Bekor qilish
-          </Button>
-          <Button onClick={() => setShowAssignModal(false)}>
-            Tayinlash
-          </Button>
-        </div>
+        <p>Yangi tayinlov formasi bu yerda bo'ladi</p>
+        {/* Assignment form will be here */}
       </Modal>
     </div>
   );

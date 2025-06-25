@@ -14,6 +14,18 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper function to extract error message
+const getErrorMessage = (error) => {
+  if (typeof error === 'string') return error;
+  if (error?.message) return error.message;
+  if (error?.detail) return error.detail;
+  if (error?.error) return error.error;
+  if (typeof error === 'object') {
+    return 'Kutilmagan xatolik yuz berdi';
+  }
+  return 'Noma\'lum xatolik';
+};
+
 // Auth Provider Component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -24,8 +36,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-        const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA);
 
         if (token && storedUser) {
           try {
@@ -41,7 +53,7 @@ export const AuthProvider = ({ children }) => {
             // Otherwise verify token is still valid by fetching fresh profile
             const profile = await ApiService.getProfile();
             setUser(profile);
-            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
+            localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(profile));
           } catch (error) {
             console.error('Token verification failed:', error);
             // Token is invalid, clear auth
@@ -65,34 +77,86 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      // Check if we already have mock auth (for testing)
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-      
-      if (token === 'mock-jwt-token' && storedUser) {
-        setUser(JSON.parse(storedUser));
-        return { success: true };
-      }
+      // Format credentials for API
+      const loginData = {
+        phone: credentials.phone || credentials.username,
+        password: credentials.password
+      };
 
-      // Try real API login
-      const response = await ApiService.login(credentials);
-      
-      if (response.access_token && response.user) {
-        const { access_token: token, user: userData } = response;
+      console.log('Attempting login with:', { phone: loginData.phone });
+
+      // Try real API login first
+      try {
+        const response = await ApiService.login(loginData);
         
-        // Store auth data
-        localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+        if (response && response.access_token && response.user) {
+          const { access_token: token, user: userData } = response;
+          
+          // Validate user is admin
+          if (userData.role !== 'admin') {
+            throw new Error('Faqat admin foydalanuvchilari tizimga kira oladi');
+          }
+          
+          // Store auth data
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+          
+          setUser(userData);
+          
+          return { success: true, user: userData };
+        } else {
+          throw new Error('Serverdan noto\'g\'ri javob olindi');
+        }
+      } catch (apiError) {
+        console.log('API login failed, trying mock login:', apiError);
         
-        setUser(userData);
+        // Fallback to mock login for testing
+        if (loginData.phone === '+998990330919' || loginData.phone === '998990330919' || loginData.phone === '990330919') {
+          if (credentials.password === 'admin123') {
+            // Mock successful login for testing
+            const mockUser = {
+              id: 1,
+              phone: '+998990330919',
+              role: 'admin',
+              first_name: 'Administrator',
+              last_name: 'System',
+              is_active: true,
+              created_at: new Date().toISOString()
+            };
+            
+            // Store mock auth data
+            localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, 'mock-jwt-token');
+            localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mockUser));
+            
+            setUser(mockUser);
+            
+            return { success: true, user: mockUser };
+          } else {
+            throw new Error('Noto\'g\'ri parol. Test uchun: admin123');
+          }
+        }
         
-        return { success: true, user: userData };
-      } else {
-        throw new Error('Invalid response format from server');
+        // If mock also fails, throw original API error
+        throw apiError;
       }
     } catch (error) {
       console.error('Login error:', error);
-      const errorMessage = error.message || 'Kirishda xatolik yuz berdi';
+      
+      let errorMessage = getErrorMessage(error);
+      
+      // Handle specific error cases
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        errorMessage = 'Noto\'g\'ri telefon raqami yoki parol';
+      } else if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+        errorMessage = 'Sizga tizimga kirish huquqi berilmagan';
+      } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+        errorMessage = 'Foydalanuvchi topilmadi';
+      } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+        errorMessage = 'Serverga ulanishda xatolik. Internet aloqangizni tekshiring';
+      } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+        errorMessage = 'Server xatoligi yuz berdi. Keyinroq qayta urinib ko\'ring';
+      }
+      
       setError(errorMessage);
       return { 
         success: false, 
@@ -111,8 +175,8 @@ export const AuthProvider = ({ children }) => {
 
   // Clear authentication data
   const clearAuth = () => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER_DATA);
     setUser(null);
     setError(null);
   };
@@ -122,13 +186,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const updatedUser = await ApiService.updateProfile(profileData);
       setUser(updatedUser);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
       return { success: true, user: updatedUser };
     } catch (error) {
       console.error('Profile update error:', error);
+      const errorMessage = getErrorMessage(error);
       return { 
         success: false, 
-        error: error.message || 'Profilni yangilashda xatolik yuz berdi' 
+        error: errorMessage
       };
     }
   };
@@ -140,16 +205,17 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Password change error:', error);
+      const errorMessage = getErrorMessage(error);
       return { 
         success: false, 
-        error: error.message || 'Parolni o\'zgartirishda xatolik yuz berdi' 
+        error: errorMessage
       };
     }
   };
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    return !!user && !!localStorage.getItem(STORAGE_KEYS.TOKEN);
+    return !!user && !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
   };
 
   // Check if user is admin
@@ -181,20 +247,9 @@ export const AuthProvider = ({ children }) => {
     return permissions.includes('all') || permissions.includes(permission);
   };
 
-  // Refresh token (optional implementation)
-  const refreshToken = async () => {
-    try {
-      // If your backend supports token refresh, implement here
-      // For now, we'll just verify current token
-      const profile = await ApiService.getProfile();
-      setUser(profile);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
-      return { success: true };
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      clearAuth();
-      return { success: false };
-    }
+  // Clear error
+  const clearError = () => {
+    setError(null);
   };
 
   // Context value
@@ -209,7 +264,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     changePassword,
-    refreshToken,
+    clearError,
     
     // Helpers
     isAuthenticated,

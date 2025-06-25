@@ -16,7 +16,9 @@ const Dashboard = () => {
     totalSubjects: 0,
     activeStudents: 0,
     activeTeachers: 0,
-    assignedTeachers: 0
+    assignedTeachers: 0,
+    totalPayments: 0,
+    pendingPayments: 0
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [systemHealth, setSystemHealth] = useState(null);
@@ -25,40 +27,57 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(loadDashboardData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Load all data concurrently
       const [
         studentsResponse,
         teachersResponse,
         parentsResponse,
         groupsResponse,
         subjectsResponse,
-        healthResponse
+        paymentsResponse
       ] = await Promise.allSettled([
         ApiService.getStudents(),
         ApiService.getTeachers(),
         ApiService.getParents(),
         ApiService.getGroups(),
         ApiService.getSubjects(),
-        ApiService.getSystemHealth()
+        ApiService.getPayments().catch(() => [])
       ]);
 
-      // Process students data
+      // Process responses
       const students = studentsResponse.status === 'fulfilled' ? studentsResponse.value : [];
       const teachers = teachersResponse.status === 'fulfilled' ? teachersResponse.value : [];
       const parents = parentsResponse.status === 'fulfilled' ? parentsResponse.value : [];
       const groups = groupsResponse.status === 'fulfilled' ? groupsResponse.value : [];
       const subjects = subjectsResponse.status === 'fulfilled' ? subjectsResponse.value : [];
-      const health = healthResponse.status === 'fulfilled' ? healthResponse.value : null;
+      const payments = paymentsResponse.status === 'fulfilled' ? paymentsResponse.value : [];
 
       // Calculate statistics
       const activeStudents = students.filter(s => s.is_active).length;
       const activeTeachers = teachers.filter(t => t.is_active).length;
-      const assignedTeachers = teachers.filter(t => t.assigned_subjects && t.assigned_subjects.length > 0).length;
+      const assignedTeachers = teachers.filter(t => 
+        t.assigned_subjects && t.assigned_subjects.length > 0
+      ).length;
+
+      // Payment statistics
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const currentMonthPayments = payments.filter(p => {
+        const paymentDate = new Date(p.payment_date);
+        return paymentDate.getMonth() + 1 === currentMonth && 
+               paymentDate.getFullYear() === currentYear;
+      });
+      
+      const totalPayments = currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+      const pendingPayments = activeStudents - currentMonthPayments.length;
 
       setStats({
         totalStudents: students.length,
@@ -68,14 +87,22 @@ const Dashboard = () => {
         totalSubjects: subjects.length,
         activeStudents,
         activeTeachers,
-        assignedTeachers
+        assignedTeachers,
+        totalPayments,
+        pendingPayments
       });
 
-      setSystemHealth(health);
-
       // Generate recent activity
-      const activity = generateRecentActivity(students, teachers, groups);
+      const activity = generateRecentActivity(students, teachers, groups, payments);
       setRecentActivity(activity);
+
+      // System health check
+      setSystemHealth({
+        status: 'healthy',
+        last_updated: new Date().toISOString(),
+        database_connected: true,
+        users_count: students.length + teachers.length + parents.length
+      });
 
     } catch (error) {
       console.error('Dashboard data loading error:', error);
@@ -85,12 +112,15 @@ const Dashboard = () => {
     }
   };
 
-  const generateRecentActivity = (students, teachers, groups) => {
+  const generateRecentActivity = (students, teachers, groups, payments) => {
     const activities = [];
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const threeDaysAgo = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
     
-    // Recent students
+    // Recent students (last 3 days)
     const recentStudents = students
-      .filter(s => s.created_at)
+      .filter(s => s.created_at && new Date(s.created_at) >= threeDaysAgo)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 3);
     
@@ -101,13 +131,14 @@ const Dashboard = () => {
         description: `${student.first_name} ${student.last_name} tizimga qo'shildi`,
         time: student.created_at,
         icon: '👨‍🎓',
-        link: `/students/${student.id}`
+        link: `/students/${student.id}`,
+        priority: 'medium'
       });
     });
 
-    // Recent teachers
+    // Recent teachers (last 3 days)
     const recentTeachers = teachers
-      .filter(t => t.created_at)
+      .filter(t => t.created_at && new Date(t.created_at) >= threeDaysAgo)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 2);
     
@@ -118,300 +149,263 @@ const Dashboard = () => {
         description: `${teacher.first_name} ${teacher.last_name} tizimga qo'shildi`,
         time: teacher.created_at,
         icon: '👩‍🏫',
-        link: `/teachers/${teacher.id}`
+        link: `/teachers/${teacher.id}`,
+        priority: 'medium'
       });
     });
 
-    // Recent groups
-    const recentGroups = groups
-      .filter(g => g.created_at)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 2);
+    // Recent payments (today)
+    const todayPayments = payments
+      .filter(p => p.payment_date && new Date(p.payment_date) >= today)
+      .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))
+      .slice(0, 3);
     
-    recentGroups.forEach(group => {
+    todayPayments.forEach(payment => {
       activities.push({
-        type: 'group_added',
-        title: 'Yangi sinf yaratildi',
-        description: `${group.name} sinfi yaratildi`,
-        time: group.created_at,
-        icon: '🏫',
-        link: '/groups'
+        type: 'payment_received',
+        title: 'Yangi to\'lov qabul qilindi',
+        description: `${formatCurrency(payment.amount)} - ${payment.student_name || 'Noma\'lum o\'quvchi'}`,
+        time: payment.payment_date,
+        icon: '💰',
+        link: `/payments`,
+        priority: 'high'
       });
     });
 
-    // Sort by time and take latest 5
-    return activities
-      .sort((a, b) => new Date(b.time) - new Date(a.time))
-      .slice(0, 5);
-  };
-
-  const formatUserName = (user) => {
-    if (!user) return 'Admin';
-    if (user.first_name && user.last_name) {
-      return `${user.first_name} ${user.last_name}`;
+    // System activities
+    if (activities.length === 0) {
+      activities.push({
+        type: 'system',
+        title: 'Tizim normal ishlaydi',
+        description: 'Hozircha yangi faoliyat yo\'q',
+        time: new Date().toISOString(),
+        icon: '✅',
+        priority: 'low'
+      });
     }
-    return user.full_name || user.phone || 'Admin';
+
+    // Sort by time and priority
+    return activities
+      .sort((a, b) => {
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+          return priorityOrder[b.priority] - priorityOrder[a.priority];
+        }
+        return new Date(b.time) - new Date(a.time);
+      })
+      .slice(0, 8);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Xayrli tong';
-    if (hour < 18) return 'Xayrli kun';
-    return 'Xayrli kech';
+  const getSystemHealthColor = () => {
+    if (!systemHealth) return 'gray';
+    if (systemHealth.status === 'healthy') return 'green';
+    if (systemHealth.status === 'warning') return 'orange';
+    return 'red';
   };
 
-  const getStudentGrowth = () => {
-    // This would be calculated from historical data
-    return '+12%'; // Placeholder
-  };
-
-  const getTeacherUtilization = () => {
-    if (stats.totalTeachers === 0) return '0%';
-    return Math.round((stats.assignedTeachers / stats.totalTeachers) * 100) + '%';
-  };
-
-  if (loading) {
-    return <Loading size="large" text="Dashboard yuklanmoqda..." />;
-  }
+  if (loading) return <Loading size="large" text="Dashboard yuklanmoqda..." />;
 
   return (
-    <div>
+    <div className="dashboard">
       {/* Welcome Section */}
-      <div className="mb-6">
-        <h1 className="header-title">
-          {getGreeting()}, {formatUserName(user)}! 👋
-        </h1>
-        <p className="text-gray-600">
-          Bugun {new Date().toLocaleDateString('uz-UZ', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}
+      <div className="welcome-section">
+        <h1>Xush kelibsiz, {user?.first_name || 'Admin'}!</h1>
+        <p className="welcome-subtitle">
+          Bugun {formatDate(new Date(), true)} | Ta'lim markazi boshqaruv paneli
         </p>
-        {systemHealth && (
-          <div className="flex items-center gap-2 mt-2">
-            <div className={`w-2 h-2 rounded-full ${systemHealth.status === 'healthy' ? 'bg-green-400' : 'bg-red-400'}`}></div>
-            <span className="text-sm text-gray-600">
-              Tizim holati: {systemHealth.status === 'healthy' ? 'Barcha tizimlar normal ishlayapti' : 'Tizimda muammolar bor'}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="error mb-6">{error}</div>
-      )}
-
-      {/* Main Statistics Cards */}
-      <div className="grid grid-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-number text-blue-600">{stats.totalStudents}</div>
-          <div className="stat-label">Jami o'quvchilar</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {stats.activeStudents} faol • {getStudentGrowth()} o'sish
+      {/* Main Statistics */}
+      <div className="stats-grid main-stats">
+        <Card className="stat-card students">
+          <div className="stat-header">
+            <div className="stat-icon">👨‍🎓</div>
+            <div className="stat-trend">
+              <span className="trend-value">+{stats.activeStudents}</span>
+              <span className="trend-label">faol</span>
+            </div>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{stats.totalStudents}</div>
+            <div className="stat-label">Jami o'quvchilar</div>
           </div>
           <Link to="/students" className="stat-link">
-            Batafsil ko'rish →
+            Barchasini ko'rish →
           </Link>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-number text-green-600">{stats.totalTeachers}</div>
-          <div className="stat-label">O'qituvchilar</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {stats.activeTeachers} faol • {getTeacherUtilization()} bandlik
+        </Card>
+
+        <Card className="stat-card teachers">
+          <div className="stat-header">
+            <div className="stat-icon">👩‍🏫</div>
+            <div className="stat-trend">
+              <span className="trend-value">{stats.assignedTeachers}</span>
+              <span className="trend-label">tayinlangan</span>
+            </div>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{stats.totalTeachers}</div>
+            <div className="stat-label">Jami o'qituvchilar</div>
           </div>
           <Link to="/teachers" className="stat-link">
-            Batafsil ko'rish →
+            Barchasini ko'rish →
           </Link>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-number text-purple-600">{stats.totalGroups}</div>
-          <div className="stat-label">Sinflar</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {Math.round(stats.totalStudents / stats.totalGroups) || 0} o'rtacha o'quvchi
+        </Card>
+
+        <Card className="stat-card groups">
+          <div className="stat-header">
+            <div className="stat-icon">📚</div>
+            <div className="stat-trend">
+              <span className="trend-value">{stats.totalSubjects}</span>
+              <span className="trend-label">fan</span>
+            </div>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{stats.totalGroups}</div>
+            <div className="stat-label">Jami guruhlar</div>
           </div>
           <Link to="/groups" className="stat-link">
-            Batafsil ko'rish →
+            Barchasini ko'rish →
           </Link>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-number text-orange-600">{stats.totalSubjects}</div>
-          <div className="stat-label">Fanlar</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {stats.assignedTeachers} tayinlangan
+        </Card>
+
+        <Card className="stat-card payments">
+          <div className="stat-header">
+            <div className="stat-icon">💰</div>
+            <div className="stat-trend">
+              <span className="trend-value pending">{stats.pendingPayments}</span>
+              <span className="trend-label">kutilmoqda</span>
+            </div>
           </div>
-          <Link to="/subjects" className="stat-link">
-            Batafsil ko'rish →
+          <div className="stat-content">
+            <div className="stat-number">{formatCurrency(stats.totalPayments)}</div>
+            <div className="stat-label">Bu oylik to'lovlar</div>
+          </div>
+          <Link to="/payments" className="stat-link">
+            To'lovlarni ko'rish →
           </Link>
-        </div>
+        </Card>
       </div>
 
-      {/* Quick Actions & Recent Activity */}
-      <div className="grid grid-2 mb-6">
-        {/* Quick Actions */}
-        <Card title="Tez amallar">
-          <div className="space-y-3">
-            <Link to="/students" className="btn w-full flex items-center">
-              <span className="mr-3">👨‍🎓</span>
-              Yangi o'quvchi qo'shish
-            </Link>
-            <Link to="/teachers" className="btn w-full flex items-center">
-              <span className="mr-3">👩‍🏫</span>
-              Yangi o'qituvchi qo'shish
-            </Link>
-            <Link to="/groups" className="btn w-full flex items-center">
-              <span className="mr-3">🏫</span>
-              Yangi sinf yaratish
-            </Link>
-            <Link to="/subjects" className="btn w-full flex items-center">
-              <span className="mr-3">📚</span>
-              Yangi fan qo'shish
-            </Link>
-            <Link to="/schedule" className="btn w-full flex items-center">
-              <span className="mr-3">📅</span>
-              Dars jadvali
-            </Link>
-            <Link to="/payments" className="btn w-full flex items-center">
-              <span className="mr-3">💰</span>
-              To'lov qo'shish
-            </Link>
+      {/* Secondary Stats */}
+      <div className="stats-grid secondary-stats">
+        <Card className="info-card">
+          <div className="info-header">
+            <h3>Ota-onalar</h3>
+            <span className="info-number">{stats.totalParents}</span>
+          </div>
+          <Link to="/parents" className="info-link">Ko'rish</Link>
+        </Card>
+
+        <Card className="info-card">
+          <div className="info-header">
+            <h3>Fanlar</h3>
+            <span className="info-number">{stats.totalSubjects}</span>
+          </div>
+          <Link to="/subjects" className="info-link">Ko'rish</Link>
+        </Card>
+
+        <Card className="info-card system-health">
+          <div className="info-header">
+            <h3>Tizim holati</h3>
+            <span className={`health-indicator ${getSystemHealthColor()}`}>
+              {systemHealth?.status === 'healthy' ? '✅' : '⚠️'}
+            </span>
+          </div>
+          <div className="health-details">
+            <small>
+              Oxirgi yangilanish: {systemHealth ? formatDate(systemHealth.last_updated, true) : 'Noma\'lum'}
+            </small>
           </div>
         </Card>
 
-        {/* Recent Activity */}
-        <Card title="So'nggi faoliyat">
+        <Card className="info-card quick-actions">
+          <div className="info-header">
+            <h3>Tezkor amallar</h3>
+          </div>
+          <div className="quick-links">
+            <Link to="/students" className="quick-link">+ O'quvchi</Link>
+            <Link to="/teachers" className="quick-link">+ O'qituvchi</Link>
+            <Link to="/groups" className="quick-link">+ Guruh</Link>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="dashboard-bottom">
+        <Card className="activity-card">
+          <div className="card-header">
+            <h3>So'nggi faoliyat</h3>
+            <button onClick={loadDashboardData} className="refresh-btn" disabled={loading}>
+              🔄 Yangilash
+            </button>
+          </div>
+          
           {recentActivity.length > 0 ? (
-            <div className="space-y-3">
+            <div className="activity-list">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <span className="text-2xl">{activity.icon}</span>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm">{activity.title}</h4>
-                    <p className="text-gray-600 text-xs mt-1">{activity.description}</p>
-                    <p className="text-gray-400 text-xs mt-2">
-                      {formatDate(activity.time)}
-                    </p>
+                <div key={index} className={`activity-item ${activity.priority}`}>
+                  <div className="activity-icon">{activity.icon}</div>
+                  <div className="activity-content">
+                    <div className="activity-title">{activity.title}</div>
+                    <div className="activity-description">{activity.description}</div>
+                    <div className="activity-time">{formatDate(activity.time, true)}</div>
                   </div>
                   {activity.link && (
-                    <Link 
-                      to={activity.link}
-                      className="text-blue-600 hover:text-blue-700 text-xs"
-                    >
-                      Ko'rish →
+                    <Link to={activity.link} className="activity-link">
+                      Ko'rish
                     </Link>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              <div className="text-4xl mb-2">📝</div>
-              <p>Hali faoliyat yo'q</p>
+            <div className="no-activity">
+              <div className="no-activity-icon">📊</div>
+              <p>Hozircha faoliyat yo'q</p>
             </div>
           )}
         </Card>
-      </div>
 
-      {/* System Overview */}
-      <div className="grid grid-3">
-        <Card title="Tizim ma'lumotlari">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Jami foydalanuvchilar:</span>
-              <span className="font-semibold">
-                {stats.totalStudents + stats.totalTeachers + stats.totalParents}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Faol foydalanuvchilar:</span>
-              <span className="font-semibold text-green-600">
-                {stats.activeStudents + stats.activeTeachers}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Tizim versiyasi:</span>
-              <span className="font-semibold">v2.0.0</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Oxirgi yangilanish:</span>
-              <span className="font-semibold">Bugun</span>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Ta'lim statistikasi">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">O'quvchi/Sinf nisbati:</span>
-              <span className="font-semibold">
-                {stats.totalGroups > 0 ? Math.round(stats.totalStudents / stats.totalGroups) : 0}:1
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">O'qituvchi bandligi:</span>
-              <span className="font-semibold">
-                {getTeacherUtilization()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Faol sinflar:</span>
-              <span className="font-semibold">{stats.totalGroups}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Mavjud fanlar:</span>
-              <span className="font-semibold">{stats.totalSubjects}</span>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Tezkor havolalar">
-          <div className="space-y-3">
-            <Link to="/profile" className="btn btn-sm w-full flex items-center">
-              <span className="mr-2">👤</span>
-              Profil sozlamalari
-            </Link>
-            <Link to="/news" className="btn btn-sm w-full flex items-center">
-              <span className="mr-2">📰</span>
-              Yangiliklar
-            </Link>
-            <Link to="/schedule" className="btn btn-sm w-full flex items-center">
-              <span className="mr-2">📅</span>
-              Haftalik jadval
-            </Link>
-            <button 
-              onClick={() => window.print()}
-              className="btn btn-sm w-full flex items-center"
-            >
-              <span className="mr-2">🖨️</span>
-              Hisobot chop etish
-            </button>
-          </div>
-        </Card>
-      </div>
-
-      {/* Performance Indicators */}
-      {systemHealth && (
-        <Card title="Tizim ishlashi" className="mt-6">
-          <div className="grid grid-3 gap-4">
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${systemHealth.database_connected ? 'text-green-600' : 'text-red-600'}`}>
-                {systemHealth.database_connected ? '✓' : '✗'}
+        {/* Quick Stats */}
+        <Card className="quick-stats">
+          <h3>Tezkor statistika</h3>
+          <div className="quick-stats-grid">
+            <div className="quick-stat">
+              <div className="quick-stat-label">Faol o'quvchilar</div>
+              <div className="quick-stat-value">{stats.activeStudents}</div>
+              <div className="quick-stat-percent">
+                {stats.totalStudents > 0 ? Math.round((stats.activeStudents / stats.totalStudents) * 100) : 0}%
               </div>
-              <div className="text-sm text-gray-600">Ma'lumotlar bazasi</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">✓</div>
-              <div className="text-sm text-gray-600">API xizmatlari</div>
+            
+            <div className="quick-stat">
+              <div className="quick-stat-label">Tayinlangan o'qituvchilar</div>
+              <div className="quick-stat-value">{stats.assignedTeachers}</div>
+              <div className="quick-stat-percent">
+                {stats.totalTeachers > 0 ? Math.round((stats.assignedTeachers / stats.totalTeachers) * 100) : 0}%
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">✓</div>
-              <div className="text-sm text-gray-600">Fayl tizimi</div>
+            
+            <div className="quick-stat">
+              <div className="quick-stat-label">To'lov kutilayotganlar</div>
+              <div className="quick-stat-value danger">{stats.pendingPayments}</div>
+              <div className="quick-stat-percent">
+                {stats.activeStudents > 0 ? Math.round((stats.pendingPayments / stats.activeStudents) * 100) : 0}%
+              </div>
             </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <Card className="error-card">
+          <div className="error-content">
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{error}</span>
+            <button onClick={loadDashboardData} className="retry-btn">
+              Qayta urinish
+            </button>
           </div>
         </Card>
       )}

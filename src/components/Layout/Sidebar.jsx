@@ -1,73 +1,158 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { MENU_ITEMS, APP_CONFIG } from '../../utils/constants';
+import { NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isCollapsed, onToggle }) => {
+  const { user } = useAuth();
   const location = useLocation();
 
-  const handleEmailSupport = () => {
-    window.open('mailto:support@school.uz');
+  const menuItems = [
+    {
+      path: '/',
+      icon: '📊',
+      label: 'Dashboard',
+      exact: true
+    },
+    {
+      path: '/students',
+      icon: '👨‍🎓',
+      label: 'O\'quvchilar'
+    },
+    {
+      path: '/teachers',
+      icon: '👩‍🏫',
+      label: 'O\'qituvchilar'
+    },
+    {
+      path: '/parents',
+      icon: '👨‍👩‍👧‍👦',
+      label: 'Ota-onalar'
+    },
+    {
+      path: '/groups',
+      icon: '👥',
+      label: 'Guruhlar'
+    },
+    {
+      path: '/subjects',
+      icon: '📚',
+      label: 'Fanlar'
+    },
+    {
+      path: '/schedule',
+      icon: '📅',
+      label: 'Dars jadvali'
+    },
+    {
+      path: '/payments',
+      icon: '💰',
+      label: 'To\'lovlar'
+    },
+    {
+      path: '/news',
+      icon: '📰',
+      label: 'Yangiliklar'
+    }
+  ];
+
+  const isActive = (path, exact = false) => {
+    if (exact) {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
   };
 
   return (
-    <>
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={onClose}
-        />
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      {/* Sidebar Header */}
+      <div className="sidebar-header">
+        <div className="logo">
+          <span className="logo-icon">🏫</span>
+          {!isCollapsed && (
+            <div className="logo-text">
+              <span className="logo-title">School</span>
+              <span className="logo-subtitle">Admin</span>
+            </div>
+          )}
+        </div>
+        <button 
+          className="sidebar-toggle"
+          onClick={onToggle}
+          title={isCollapsed ? 'Kengaytirish' : 'Yig\'ish'}
+        >
+          {isCollapsed ? '→' : '←'}
+        </button>
+      </div>
+
+      {/* User Info */}
+      {!isCollapsed && (
+        <div className="sidebar-user">
+          <div className="user-avatar">
+            {user?.profile_picture ? (
+              <img src={user.profile_picture} alt={user.first_name} />
+            ) : (
+              <span className="user-initials">
+                {user?.first_name?.[0]}{user?.last_name?.[0]}
+              </span>
+            )}
+          </div>
+          <div className="user-info">
+            <div className="user-name">
+              {user?.first_name} {user?.last_name}
+            </div>
+            <div className="user-role">Administrator</div>
+          </div>
+        </div>
       )}
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        {/* Header */}
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            🏫
-          </div>
-          <div>
-            <h2 className="sidebar-title">{APP_CONFIG.NAME}</h2>
-            <div className="text-xs text-gray-500">v{APP_CONFIG.VERSION}</div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="sidebar-nav">
-          {MENU_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <Link
-                key={item.path}
+      {/* Navigation Menu */}
+      <nav className="sidebar-nav">
+        <ul className="nav-list">
+          {menuItems.map((item) => (
+            <li key={item.path} className="nav-item">
+              <NavLink
                 to={item.path}
-                className={`nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => onClose && onClose()}
+                className={`nav-link ${isActive(item.path, item.exact) ? 'active' : ''}`}
+                title={isCollapsed ? item.label : undefined}
               >
                 <span className="nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+                {!isCollapsed && (
+                  <span className="nav-label">{item.label}</span>
+                )}
+                {isActive(item.path, item.exact) && (
+                  <span className="nav-indicator"></span>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-        {/* Footer */}
-        <div className="sidebar-footer p-4 border-t border-gray-200 mt-auto">
-          <div className="text-xs text-gray-500 text-center">
-            <div>© 2025 {APP_CONFIG.AUTHOR}</div>
-            <div className="mt-1">
-              <button 
-                type="button"
-                className="text-blue-500 hover:underline bg-transparent border-none cursor-pointer text-xs"
-                onClick={handleEmailSupport}
-              >
-                Yordam
-              </button>
+      {/* Sidebar Footer */}
+      <div className="sidebar-footer">
+        {!isCollapsed && (
+          <div className="footer-content">
+            <div className="app-version">
+              <span className="version-label">Versiya</span>
+              <span className="version-number">2.0.0</span>
+            </div>
+            <div className="footer-links">
+              <NavLink to="/profile" className="footer-link">
+                ⚙️ Sozlamalar
+              </NavLink>
             </div>
           </div>
-        </div>
-      </aside>
-    </>
+        )}
+        
+        {isCollapsed && (
+          <div className="footer-icons">
+            <NavLink to="/profile" className="footer-icon" title="Sozlamalar">
+              ⚙️
+            </NavLink>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 };
 

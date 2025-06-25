@@ -1,15 +1,15 @@
 // Validation rules and messages
 export const VALIDATION_RULES = {
-  REQUIRED: 'Bu maydon to\'ldirilishi shart',
-  EMAIL: 'Email formati noto\'g\'ri',
-  PHONE: 'Telefon raqam formati noto\'g\'ri',
+  REQUIRED: "Bu maydon to'ldirilishi shart",
+  EMAIL: "Email formati noto'g'ri",
+  PHONE: "Telefon raqam formati noto'g'ri",
   MIN_LENGTH: 'Minimum uzunlik:',
   MAX_LENGTH: 'Maksimal uzunlik:',
   NUMERIC: 'Faqat raqam kiriting',
   POSITIVE: 'Musbat qiymat kiriting',
   PASSWORD_WEAK: 'Parol juda oddiy (minimum 6 belgi)',
-  DATE_INVALID: 'Noto\'g\'ri sana formati',
-  URL_INVALID: 'Noto\'g\'ri URL formati'
+  DATE_INVALID: "Noto'g'ri sana formati",
+  URL_INVALID: "Noto'g'ri URL formati"
 };
 
 // Basic validation functions
@@ -111,15 +111,15 @@ export const validatePassword = (password) => {
   }
   
   if (password.length < 6) {
-    errors.push('Parol kamida 6 ta belgidan iborat bo\'lishi kerak');
+    errors.push("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
   }
   
   if (password.length > 50) {
-    errors.push('Parol 50 ta belgidan ko\'p bo\'lmasligi kerak');
+    errors.push("Parol 50 ta belgidan ko'p bo'lmasligi kerak");
   }
   
   if (!/\d/.test(password)) {
-    errors.push('Parolda kamida bitta raqam bo\'lishi kerak');
+    errors.push("Parolda kamida bitta raqam bo'lishi kerak");
   }
   
   return errors;
@@ -135,16 +135,16 @@ export const validateName = (name) => {
   }
   
   if (!hasMinLength(name, 2)) {
-    errors.push('Ism kamida 2 ta belgidan iborat bo\'lishi kerak');
+    errors.push("Ism kamida 2 ta belgidan iborat bo'lishi kerak");
   }
   
   if (!hasMaxLength(name, 50)) {
-    errors.push('Ism 50 ta belgidan ko\'p bo\'lmasligi kerak');
+    errors.push("Ism 50 ta belgidan ko'p bo'lmasligi kerak");
   }
   
-  // Only letters, spaces, and some special characters
-  if (!/^[a-zA-ZА-Яа-яЁёўқғҳ\s\-\']+$/u.test(name)) {
-    errors.push('Ismda faqat harflar, probel va defis bo\'lishi mumkin');
+  // Only letters, spaces, and some special characters (fixed regex)
+  if (!/^[a-zA-ZА-Яа-яЁёўқғҳ\s\-']+$/u.test(name)) {
+    errors.push("Ismda faqat harflar, probel va defis bo'lishi mumkin");
   }
   
   return errors;
@@ -159,7 +159,7 @@ export const validatePhone = (phone) => {
   }
   
   if (!isPhoneNumber(phone)) {
-    errors.push('Telefon raqam formati noto\'g\'ri (masalan: 901234567)');
+    errors.push("Telefon raqam formati noto'g'ri (masalan: 901234567)");
   }
   
   return errors;
@@ -169,7 +169,7 @@ export const validateEmail = (email) => {
   const errors = [];
   
   if (email && !isEmail(email)) {
-    errors.push('Email formati noto\'g\'ri');
+    errors.push("Email formati noto'g'ri");
   }
   
   return errors;
@@ -370,11 +370,11 @@ export const createParentValidator = () => {
 
 export const createPaymentValidator = () => {
   return new FormValidator()
-    .required('student_id', 'O\'quvchi tanlanishi shart')
+    .required('student_id', "O'quvchi tanlanishi shart")
     .required('amount')
     .numeric('amount')
     .positive('amount')
-    .required('payment_method', 'To\'lov usuli tanlanishi shart');
+    .required('payment_method', "To'lov usuli tanlanishi shart");
 };
 
 export const createNewsValidator = () => {

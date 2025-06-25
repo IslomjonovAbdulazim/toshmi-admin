@@ -4,7 +4,6 @@ import Button from '../components/Common/Button';
 import Input from '../components/Common/Input';
 import { useAuth } from '../hooks/useAuth';
 import ApiService from '../services/api';
-import { MESSAGES } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
 
 const Profile = () => {
@@ -63,28 +62,42 @@ const Profile = () => {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 3 * 1024 * 1024) { // 3MB limit
+        setError('Fayl hajmi 3MB dan oshmasligi kerak');
+        return;
+      }
+
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+        setError('Faqat JPG, PNG, GIF formatdagi rasmlar qabul qilinadi');
+        return;
+      }
+
       setSelectedImage(file);
+      
+      // Create preview
       const reader = new FileReader();
-      reader.onload = () => setImagePreview(reader.result);
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
       reader.readAsDataURL(file);
+      setError('');
     }
   };
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
     setSuccess('');
-    setLoading(true);
-
+    
     try {
-      const result = await updateProfile(profileData);
-      if (result.success) {
-        setSuccess('Profil muvaffaqiyatli yangilandi');
-      } else {
-        setError(result.error || 'Profilni yangilashda xatolik');
+      const response = await ApiService.updateProfile(profileData);
+      if (updateProfile) {
+        updateProfile(response);
       }
+      setSuccess('Profil muvaffaqiyatli yangilandi');
     } catch (error) {
-      setError('Profilni yangilashda xatolik: ' + error.message);
+      setError(error.message || 'Profilni yangilashda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
@@ -92,28 +105,28 @@ const Profile = () => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
     setSuccess('');
 
-    // Validate passwords
     if (passwordData.new_password !== passwordData.confirm_password) {
       setError('Yangi parollar mos kelmaydi');
+      setLoading(false);
       return;
     }
 
     if (passwordData.new_password.length < 6) {
       setError('Yangi parol kamida 6 ta belgidan iborat bo\'lishi kerak');
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     try {
       await ApiService.changePassword({
         old_password: passwordData.old_password,
         new_password: passwordData.new_password
       });
-
+      
       setSuccess('Parol muvaffaqiyatli o\'zgartirildi');
       setPasswordData({
         old_password: '',
@@ -121,7 +134,7 @@ const Profile = () => {
         confirm_password: ''
       });
     } catch (error) {
-      setError('Parolni o\'zgartirishda xatolik: ' + error.message);
+      setError(error.message || 'Parolni o\'zgartirishda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
@@ -131,15 +144,22 @@ const Profile = () => {
     if (!selectedImage) return;
 
     setLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
-      await ApiService.uploadProfilePicture(selectedImage);
-      setSuccess('Profil rasmi yangilandi');
+      const response = await ApiService.uploadProfilePicture(selectedImage);
+      if (updateProfile) {
+        updateProfile({
+          ...user,
+          profile_image_id: response.file_id
+        });
+      }
+      setSuccess('Profil rasmi muvaffaqiyatli yangilandi');
       setSelectedImage(null);
       setImagePreview(null);
-      // Reload profile to get updated image
-      window.location.reload();
     } catch (error) {
-      setError('Rasm yuklashda xatolik: ' + error.message);
+      setError(error.message || 'Rasmni yuklashda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
@@ -152,210 +172,152 @@ const Profile = () => {
   ];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="header-title">Profil sozlamalari</h1>
-        <p className="text-gray-600">
-          Shaxsiy ma'lumotlaringizni boshqaring va parolingizni o'zgartiring
-        </p>
+    <div className="profile-page">
+      <div className="page-header">
+        <h1>Admin profili</h1>
+        <p>Shaxsiy ma'lumotlarni va sozlamalarni boshqarish</p>
       </div>
 
-      {error && <div className="error mb-4">{error}</div>}
-      {success && <div className="success mb-4">{success}</div>}
-
       {/* User Info Card */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-2xl">
-            {user?.profile_image_id ? (
-              <img 
-                src={`/files/${user.profile_image_id}`} 
-                alt="Profile" 
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <span>{user?.first_name?.charAt(0) || 'A'}</span>
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">
-              {user?.first_name} {user?.last_name}
-            </h2>
-            <p className="text-gray-600">{user?.role === 'admin' ? 'Administrator' : user?.role}</p>
-            <p className="text-sm text-gray-500">
-              Qo'shilgan: {user?.created_at ? formatDate(user.created_at) : '-'}
-            </p>
-          </div>
+      <Card className="user-info-card">
+        <div className="user-avatar">
+          {user?.profile_image_id ? (
+            <img src={`/files/${user.profile_image_id}`} alt="Profile" />
+          ) : (
+            <div className="avatar-placeholder">
+              {user?.first_name?.[0]}{user?.last_name?.[0]}
+            </div>
+          )}
+        </div>
+        <div className="user-details">
+          <h2>{user?.first_name} {user?.last_name}</h2>
+          <p className="user-role">Administrator</p>
+          <p className="user-meta">
+            Ro'yxatdan o'tgan: {user?.created_at ? formatDate(user.created_at) : 'Noma\'lum'}
+          </p>
         </div>
       </Card>
 
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* Tabs */}
+      <Card>
+        <div className="tabs-header">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="tab-icon">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Tab Content */}
-      {activeTab === 'profile' && (
-        <Card title="Profil ma'lumotlari">
-          <form onSubmit={handleProfileSubmit}>
-            <div className="grid grid-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Ism *</label>
+        {/* Messages */}
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+
+        {/* Tab Content */}
+        {activeTab === 'profile' && (
+          <Card className="form-card">
+            <h3>Shaxsiy ma'lumotlar</h3>
+            <form onSubmit={handleProfileSubmit}>
+              <div className="form-grid">
                 <Input
+                  label="Ism"
                   name="first_name"
                   value={profileData.first_name}
                   onChange={handleProfileChange}
-                  placeholder="Ismingizni kiriting"
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Familiya *</label>
                 <Input
+                  label="Familiya"
                   name="last_name"
                   value={profileData.last_name}
                   onChange={handleProfileChange}
-                  placeholder="Familiyangizni kiriting"
                   required
                 />
               </div>
-            </div>
+              
+              <Input
+                label="Telefon raqami"
+                name="phone"
+                value={profileData.phone}
+                onChange={handleProfileChange}
+                required
+              />
+              
+              <Input
+                label="Email (ixtiyoriy)"
+                name="email"
+                type="email"
+                value={profileData.email}
+                onChange={handleProfileChange}
+              />
 
-            <div className="grid grid-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Telefon raqam</label>
-                <Input
-                  name="phone"
-                  value={profileData.phone}
-                  onChange={handleProfileChange}
-                  placeholder="+998901234567"
-                  disabled
-                />
-                <small className="text-gray-500 text-xs">
-                  Telefon raqamni o'zgartirish uchun administrator bilan bog'laning
-                </small>
+              <div className="form-actions">
+                <Button type="submit" loading={loading}>
+                  O'zgarishlarni saqlash
+                </Button>
               </div>
+            </form>
+          </Card>
+        )}
 
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={profileData.email}
-                  onChange={handleProfileChange}
-                  placeholder="email@example.com"
-                />
-              </div>
-            </div>
+        {activeTab === 'password' && (
+          <Card className="form-card">
+            <h3>Parolni o'zgartirish</h3>
+            <form onSubmit={handlePasswordSubmit}>
+              <Input
+                label="Joriy parol"
+                name="old_password"
+                type="password"
+                value={passwordData.old_password}
+                onChange={handlePasswordChange}
+                required
+              />
+              
+              <Input
+                label="Yangi parol"
+                name="new_password"
+                type="password"
+                value={passwordData.new_password}
+                onChange={handlePasswordChange}
+                required
+                help="Kamida 6 ta belgi"
+              />
+              
+              <Input
+                label="Yangi parolni tasdiqlash"
+                name="confirm_password"
+                type="password"
+                value={passwordData.confirm_password}
+                onChange={handlePasswordChange}
+                required
+              />
 
-            <div className="flex justify-end">
-              <Button 
-                type="submit" 
-                loading={loading}
-                disabled={loading}
-              >
-                Saqlash
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {activeTab === 'password' && (
-        <Card title="Parolni o'zgartirish">
-          <form onSubmit={handlePasswordSubmit}>
-            <div className="max-w-md">
-              <div className="form-group">
-                <label className="form-label">Joriy parol *</label>
-                <Input
-                  type="password"
-                  name="old_password"
-                  value={passwordData.old_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Joriy parolingizni kiriting"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Yangi parol *</label>
-                <Input
-                  type="password"
-                  name="new_password"
-                  value={passwordData.new_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Yangi parolingizni kiriting"
-                  required
-                  minLength="6"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Yangi parolni tasdiqlang *</label>
-                <Input
-                  type="password"
-                  name="confirm_password"
-                  value={passwordData.confirm_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Yangi parolingizni qayta kiriting"
-                  required
-                  minLength="6"
-                />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h4 className="font-medium text-blue-800 mb-2">Parol talablari:</h4>
-                <ul className="text-blue-700 text-sm space-y-1">
-                  <li>• Kamida 6 ta belgi</li>
-                  <li>• Kuchli parol uchun harflar, raqamlar va belgilarni aralashtiring</li>
-                  <li>• Boshqa joyda ishlatmagan noyob parol kiriting</li>
-                </ul>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  type="submit" 
-                  loading={loading}
-                  disabled={loading}
-                >
+              <div className="form-actions">
+                <Button type="submit" loading={loading}>
                   Parolni o'zgartirish
                 </Button>
               </div>
-            </div>
-          </form>
-        </Card>
-      )}
+            </form>
+          </Card>
+        )}
 
-      {activeTab === 'image' && (
-        <Card title="Profil rasmi">
-          <div className="max-w-md">
+        {activeTab === 'image' && (
+          <Card className="form-card">
+            <h3>Profil rasmi</h3>
+            
             <div className="form-group">
-              <label className="form-label">Yangi rasm tanlang</label>
+              <label className="form-label">Yangi rasm tanlash</label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/gif"
                 onChange={handleImageSelect}
-                className="form-input"
+                className="file-input"
               />
-              <small className="text-gray-500 text-xs mt-1">
+              <small className="form-help">
                 JPG, PNG, GIF formatlarida, maksimal 3MB
               </small>
             </div>
@@ -363,23 +325,15 @@ const Profile = () => {
             {imagePreview && (
               <div className="form-group">
                 <label className="form-label">Yangi rasm ko'rinishi:</label>
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
-                  />
+                <div className="image-preview">
+                  <img src={imagePreview} alt="Preview" />
                 </div>
               </div>
             )}
 
             {selectedImage && (
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleImageUpload}
-                  loading={loading}
-                  disabled={loading}
-                >
+              <div className="form-actions">
+                <Button onClick={handleImageUpload} loading={loading}>
                   Rasmni yuklash
                 </Button>
                 <Button 
@@ -395,20 +349,16 @@ const Profile = () => {
             )}
 
             {user?.profile_image_id && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Joriy profil rasmi:</h4>
-                <div className="w-24 h-24 border rounded-lg overflow-hidden">
-                  <img 
-                    src={`/files/${user.profile_image_id}`} 
-                    alt="Current profile" 
-                    className="w-full h-full object-cover"
-                  />
+              <div className="current-image">
+                <h4>Joriy profil rasmi:</h4>
+                <div className="image-preview">
+                  <img src={`/files/${user.profile_image_id}`} alt="Current profile" />
                 </div>
               </div>
             )}
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
+      </Card>
     </div>
   );
 };

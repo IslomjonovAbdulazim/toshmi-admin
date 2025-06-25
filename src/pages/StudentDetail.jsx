@@ -18,20 +18,20 @@ const StudentDetail = () => {
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
-    loadStudentDetails();
-  }, [id]);
+    const loadStudentDetails = async () => {
+      setLoading(true);
+      try {
+        const data = await ApiService.getStudentDetails(id);
+        setStudent(data);
+      } catch (error) {
+        setError('O\'quvchi ma\'lumotlarini yuklashda xatolik: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const loadStudentDetails = async () => {
-    setLoading(true);
-    try {
-      const data = await ApiService.getStudentDetails(id);
-      setStudent(data);
-    } catch (error) {
-      setError('O\'quvchi ma\'lumotlarini yuklashda xatolik: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadStudentDetails();
+  }, [id]); // Only depend on id
 
   const calculateGradeStats = (grades) => {
     if (!grades || grades.length === 0) return { average: 0, total: 0, passed: 0 };
@@ -78,442 +78,358 @@ const StudentDetail = () => {
   if (error) return <div className="error">{error}</div>;
   if (!student) return <div className="error">O'quvchi topilmadi</div>;
 
-  const homeworkStats = calculateGradeStats(student.recent_grades?.homework_grades);
-  const examStats = calculateGradeStats(student.recent_grades?.exam_grades);
-  const attendanceStats = getAttendanceStats(student.attendance_summary);
+  const homeworkStats = calculateGradeStats(student.homework_grades || []);
+  const examStats = calculateGradeStats(student.exam_grades || []);
+  const attendanceStats = getAttendanceStats(student.attendance_records || []);
 
   return (
-    <div>
+    <div className="student-detail">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <button 
-            onClick={() => navigate('/students')}
-            className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
-          >
-            ← O'quvchilar ro'yxatiga qaytish
-          </button>
-          <h1 className="header-title">
-            {student.user?.first_name} {student.user?.last_name}
-          </h1>
-          <p className="text-gray-600">
-            {student.group?.name || 'Sinf tayinlanmagan'} • ID: {student.id}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowEditModal(true)}>
-            Tahrirlash
-          </Button>
-          <Button 
-            variant="secondary"
-            onClick={() => window.print()}
-          >
-            📄 Chop etish
-          </Button>
-        </div>
+      <div className="detail-header">
+        <Button variant="secondary" onClick={() => navigate('/students')}>
+          ← Orqaga
+        </Button>
+        <Button onClick={() => setShowEditModal(true)}>
+          Tahrirlash
+        </Button>
       </div>
 
-      {/* Student Overview Card */}
-      <Card className="mb-6">
-        <div className="grid grid-3 gap-6">
-          {/* Basic Info */}
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
-              {student.user?.profile_image_id ? (
-                <img 
-                  src={`/files/${student.user.profile_image_id}`} 
-                  alt="Profile" 
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-blue-600">
-                  {student.user?.first_name?.charAt(0)}
-                </span>
-              )}
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">
-                {student.user?.first_name} {student.user?.last_name}
-              </h3>
-              <p className="text-gray-600">{student.group?.name}</p>
-              <span className={`badge ${student.user?.is_active ? 'badge-success' : 'badge-danger'}`}>
-                {student.user?.is_active ? 'Faol' : 'Faol emas'}
+      {/* Student Profile Card */}
+      <Card className="student-profile">
+        <div className="profile-header">
+          <div className="profile-avatar">
+            {student.profile_picture ? (
+              <img src={student.profile_picture} alt={student.first_name} />
+            ) : (
+              <div className="avatar-placeholder">
+                {student.first_name[0]}{student.last_name[0]}
+              </div>
+            )}
+          </div>
+          <div className="profile-info">
+            <h1>{student.first_name} {student.last_name}</h1>
+            <div className="profile-meta">
+              <span className="student-id">ID: {student.id}</span>
+              <span className="group-name">{student.group?.name || 'Guruh tayinlanmagan'}</span>
+              <span className={`status ${student.is_active ? 'active' : 'inactive'}`}>
+                {student.is_active ? 'Faol' : 'Nofaol'}
               </span>
             </div>
           </div>
-
-          {/* Contact Info */}
-          <div>
-            <h4 className="font-medium mb-2">Aloqa ma'lumotlari</h4>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-gray-600">Telefon:</span>
-                <span className="ml-2">
-                  {student.user?.phone ? formatPhoneNumber(student.user.phone) : '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Ota-ona:</span>
-                <span className="ml-2">
-                  {student.parent_phone ? formatPhoneNumber(student.parent_phone) : '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Qo'shilgan:</span>
-                <span className="ml-2">{formatDate(student.user?.created_at)}</span>
-              </div>
-            </div>
+        </div>
+        
+        <div className="profile-contact">
+          <div className="contact-item">
+            <span className="contact-label">Telefon:</span>
+            <span className="contact-value">{formatPhoneNumber(student.phone)}</span>
           </div>
-
-          {/* Academic Info */}
-          <div>
-            <h4 className="font-medium mb-2">Ta'lim ma'lumotlari</h4>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-gray-600">O'quv yili:</span>
-                <span className="ml-2">{student.group?.academic_year || '-'}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Bitirish yili:</span>
-                <span className="ml-2">{student.graduation_year || '-'}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">O'rtacha ball:</span>
-                <span className="ml-2 font-medium" style={{ color: getGradeColor(homeworkStats.average) }}>
-                  {homeworkStats.average}% ({getGradeLetter(homeworkStats.average)})
-                </span>
-              </div>
-            </div>
+          <div className="contact-item">
+            <span className="contact-label">Ota-ona telefoni:</span>
+            <span className="contact-value">{formatPhoneNumber(student.parent_phone)}</span>
+          </div>
+          <div className="contact-item">
+            <span className="contact-label">Bitirish yili:</span>
+            <span className="contact-value">{student.graduation_year || 'Kiritilmagan'}</span>
           </div>
         </div>
       </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-4 gap-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-number" style={{ color: getGradeColor(homeworkStats.average) }}>
-            {homeworkStats.average}%
+      {/* Statistics Cards */}
+      <div className="stats-grid">
+        <Card className="stat-card homework">
+          <div className="stat-icon">📝</div>
+          <div className="stat-content">
+            <div className="stat-number">{homeworkStats.average}%</div>
+            <div className="stat-label">Uy vazifasi o'rtachasi</div>
+            <div className="stat-meta">{homeworkStats.passed}/{homeworkStats.total} bajarilgan</div>
           </div>
-          <div className="stat-label">O'rtacha ball</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-blue-600">{homeworkStats.total + examStats.total}</div>
-          <div className="stat-label">Jami baholar</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-green-600">
-            {attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0}%
+        </Card>
+        
+        <Card className="stat-card exams">
+          <div className="stat-icon">📊</div>
+          <div className="stat-content">
+            <div className="stat-number">{examStats.average}%</div>
+            <div className="stat-label">Imtihon o'rtachasi</div>
+            <div className="stat-meta">{examStats.passed}/{examStats.total} topshirilgan</div>
           </div>
-          <div className="stat-label">Davomat</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-purple-600">{attendanceStats.total}</div>
-          <div className="stat-label">Jami darslar</div>
-        </div>
+        </Card>
+        
+        <Card className="stat-card attendance">
+          <div className="stat-icon">👥</div>
+          <div className="stat-content">
+            <div className="stat-number">
+              {attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0}%
+            </div>
+            <div className="stat-label">Davomat</div>
+            <div className="stat-meta">{attendanceStats.present}/{attendanceStats.total} kelgan</div>
+          </div>
+        </Card>
+        
+        <Card className="stat-card payments">
+          <div className="stat-icon">💰</div>
+          <div className="stat-content">
+            <div className="stat-number">{(student.payment_records || []).length}</div>
+            <div className="stat-label">To'lovlar</div>
+            <div className="stat-meta">Jami to'lovlar soni</div>
+          </div>
+        </Card>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* Tabs */}
+      <Card>
+        <div className="tabs-header">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="tab-icon">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-2 gap-6">
-          <Card title="Yaqinda qo'yilgan baholar">
-            {student.recent_grades?.homework_grades?.length > 0 || student.recent_grades?.exam_grades?.length > 0 ? (
-              <div className="space-y-3">
-                {/* Recent homework grades */}
-                {student.recent_grades?.homework_grades?.slice(0, 5).map((grade, index) => (
-                  <div key={`hw-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                    <div>
-                      <div className="font-medium">{grade.homework?.title}</div>
-                      <div className="text-sm text-gray-600">{grade.homework?.subject} • Vazifa</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium" style={{ color: getGradeColor(calculateGrade(grade.points, grade.homework?.max_points)) }}>
-                        {grade.points}/{grade.homework?.max_points}
-                      </div>
-                      <div className="text-xs text-gray-500">{formatDate(grade.graded_at)}</div>
-                    </div>
+        <div className="tab-content">
+          {activeTab === 'overview' && (
+            <div className="overview-content">
+              <div className="info-section">
+                <h3>Shaxsiy ma'lumotlar</h3>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <label>To'liq ismi:</label>
+                    <span>{student.first_name} {student.last_name}</span>
                   </div>
-                ))}
-                
-                {/* Recent exam grades */}
-                {student.recent_grades?.exam_grades?.slice(0, 5).map((grade, index) => (
-                  <div key={`ex-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded">
-                    <div>
-                      <div className="font-medium">{grade.exam?.title}</div>
-                      <div className="text-sm text-gray-600">{grade.exam?.subject} • Imtihon</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium" style={{ color: getGradeColor(calculateGrade(grade.points, grade.exam?.max_points)) }}>
-                        {grade.points}/{grade.exam?.max_points}
-                      </div>
-                      <div className="text-xs text-gray-500">{formatDate(grade.graded_at)}</div>
-                    </div>
+                  <div className="info-item">
+                    <label>Telefon:</label>
+                    <span>{formatPhoneNumber(student.phone)}</span>
                   </div>
-                ))}
+                  <div className="info-item">
+                    <label>Guruh:</label>
+                    <span>{student.group?.name || 'Tayinlanmagan'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Ota-ona telefoni:</label>
+                    <span>{formatPhoneNumber(student.parent_phone)}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Bitirish yili:</label>
+                    <span>{student.graduation_year || 'Kiritilmagan'}</span>
+                  </div>
+                  <div className="info-item">
+                    <label>Qo'shilgan sana:</label>
+                    <span>{formatDate(student.created_at)}</span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <div className="text-4xl mb-2">📝</div>
-                <p>Hali baholar berilmagan</p>
-              </div>
-            )}
-          </Card>
 
-          <Card title="Yaqinda davomat">
-            {student.attendance_summary?.length > 0 ? (
-              <div className="space-y-2">
-                {student.attendance_summary.slice(0, 10).map((record, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 border-b last:border-b-0">
-                    <div>
-                      <div className="font-medium">{record.subject}</div>
-                      <div className="text-sm text-gray-600">{formatDate(record.date)}</div>
-                    </div>
-                    <span className={`badge ${
-                      record.status === 'present' ? 'badge-success' :
-                      record.status === 'absent' ? 'badge-danger' :
-                      record.status === 'late' ? 'badge-warning' : ''
-                    }`}>
-                      {ATTENDANCE_STATUS_LABELS[record.status] || record.status}
-                    </span>
+              <div className="summary-section">
+                <h3>Akademik xulosasi</h3>
+                <div className="summary-cards">
+                  <div className="summary-card">
+                    <div className="summary-title">Uy vazifasi</div>
+                    <div className="summary-value">{homeworkStats.average}%</div>
+                    <div className="summary-desc">{homeworkStats.total} ta topshiriq</div>
                   </div>
-                ))}
+                  <div className="summary-card">
+                    <div className="summary-title">Imtihonlar</div>
+                    <div className="summary-value">{examStats.average}%</div>
+                    <div className="summary-desc">{examStats.total} ta imtihon</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-title">Davomat</div>
+                    <div className="summary-value">
+                      {attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0}%
+                    </div>
+                    <div className="summary-desc">{attendanceStats.total} ta dars</div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <div className="text-4xl mb-2">👥</div>
-                <p>Davomat ma'lumotlari yo'q</p>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
+            </div>
+          )}
 
-      {activeTab === 'grades' && (
-        <div className="space-y-6">
-          <Card title="Uy vazifasi baholari">
-            {student.recent_grades?.homework_grades?.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Vazifa nomi</th>
-                      <th>Fan</th>
-                      <th>Ball</th>
-                      <th>Foiz</th>
-                      <th>Harf</th>
-                      <th>Izoh</th>
-                      <th>Sana</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {student.recent_grades.homework_grades.map((grade, index) => {
-                      const percentage = calculateGrade(grade.points, grade.homework?.max_points);
-                      return (
-                        <tr key={index}>
-                          <td className="font-medium">{grade.homework?.title}</td>
-                          <td>{grade.homework?.subject}</td>
-                          <td>{grade.points}/{grade.homework?.max_points}</td>
-                          <td style={{ color: getGradeColor(percentage) }}>
-                            {percentage}%
-                          </td>
-                          <td>
-                            <span className="badge" style={{ backgroundColor: getGradeColor(percentage), color: 'white' }}>
-                              {getGradeLetter(percentage)}
-                            </span>
-                          </td>
-                          <td className="max-w-xs truncate">{grade.comment || '-'}</td>
-                          <td>{formatDate(grade.graded_at)}</td>
+          {activeTab === 'grades' && (
+            <div className="grades-content">
+              <div className="grades-section">
+                <h3>Uy vazifasi baholari</h3>
+                {student.homework_grades && student.homework_grades.length > 0 ? (
+                  <div className="grades-table">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Topshiriq</th>
+                          <th>Ball</th>
+                          <th>Foiz</th>
+                          <th>Harfi</th>
+                          <th>Sana</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <p>Uy vazifasi baholari yo'q</p>
-              </div>
-            )}
-          </Card>
-
-          <Card title="Imtihon baholari">
-            {student.recent_grades?.exam_grades?.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Imtihon nomi</th>
-                      <th>Fan</th>
-                      <th>Ball</th>
-                      <th>Foiz</th>
-                      <th>Harf</th>
-                      <th>Izoh</th>
-                      <th>Sana</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {student.recent_grades.exam_grades.map((grade, index) => {
-                      const percentage = calculateGrade(grade.points, grade.exam?.max_points);
-                      return (
-                        <tr key={index}>
-                          <td className="font-medium">{grade.exam?.title}</td>
-                          <td>{grade.exam?.subject}</td>
-                          <td>{grade.points}/{grade.exam?.max_points}</td>
-                          <td style={{ color: getGradeColor(percentage) }}>
-                            {percentage}%
-                          </td>
-                          <td>
-                            <span className="badge" style={{ backgroundColor: getGradeColor(percentage), color: 'white' }}>
-                              {getGradeLetter(percentage)}
-                            </span>
-                          </td>
-                          <td className="max-w-xs truncate">{grade.comment || '-'}</td>
-                          <td>{formatDate(grade.graded_at)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <p>Imtihon baholari yo'q</p>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'attendance' && (
-        <Card title="Davomat jadvali">
-          {student.attendance_summary?.length > 0 ? (
-            <div>
-              <div className="grid grid-4 gap-4 mb-6">
-                <div className="stat-card">
-                  <div className="stat-number text-green-600">{attendanceStats.present}</div>
-                  <div className="stat-label">Kelgan</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number text-red-600">{attendanceStats.absent}</div>
-                  <div className="stat-label">Kelmagan</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number text-yellow-600">{attendanceStats.late}</div>
-                  <div className="stat-label">Kech kelgan</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number text-blue-600">
-                    {attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0}%
+                      </thead>
+                      <tbody>
+                        {student.homework_grades.map((grade, index) => {
+                          const percentage = calculateGrade(grade.points, grade.max_points);
+                          return (
+                            <tr key={index}>
+                              <td>{grade.homework_title || `Topshiriq ${index + 1}`}</td>
+                              <td>{grade.points}/{grade.max_points}</td>
+                              <td>
+                                <span className={`grade-percentage ${getGradeColor(percentage)}`}>
+                                  {percentage}%
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`grade-letter ${getGradeColor(percentage)}`}>
+                                  {getGradeLetter(percentage)}
+                                </span>
+                              </td>
+                              <td>{formatDate(grade.graded_at)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="stat-label">Davomat foizi</div>
-                </div>
+                ) : (
+                  <div className="no-data">
+                    <div className="no-data-icon">📝</div>
+                    <p>Uy vazifasi baholari yo'q</p>
+                  </div>
+                )}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Sana</th>
-                      <th>Fan</th>
-                      <th>O'qituvchi</th>
-                      <th>Holat</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {student.attendance_summary.map((record, index) => (
-                      <tr key={index}>
-                        <td>{formatDate(record.date)}</td>
-                        <td>{record.subject}</td>
-                        <td>{record.teacher}</td>
-                        <td>
-                          <span className={`badge ${
-                            record.status === 'present' ? 'badge-success' :
-                            record.status === 'absent' ? 'badge-danger' :
-                            record.status === 'late' ? 'badge-warning' : ''
-                          }`}>
-                            {ATTENDANCE_STATUS_LABELS[record.status] || record.status}
-                          </span>
-                        </td>
+              <div className="grades-section">
+                <h3>Imtihon baholari</h3>
+                {student.exam_grades && student.exam_grades.length > 0 ? (
+                  <div className="grades-table">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Imtihon</th>
+                          <th>Ball</th>
+                          <th>Foiz</th>
+                          <th>Harfi</th>
+                          <th>Sana</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {student.exam_grades.map((grade, index) => {
+                          const percentage = calculateGrade(grade.points, grade.max_points);
+                          return (
+                            <tr key={index}>
+                              <td>{grade.exam_title || `Imtihon ${index + 1}`}</td>
+                              <td>{grade.points}/{grade.max_points}</td>
+                              <td>
+                                <span className={`grade-percentage ${getGradeColor(percentage)}`}>
+                                  {percentage}%
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`grade-letter ${getGradeColor(percentage)}`}>
+                                  {getGradeLetter(percentage)}
+                                </span>
+                              </td>
+                              <td>{formatDate(grade.graded_at)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="no-data">
+                    <div className="no-data-icon">📊</div>
+                    <p>Imtihon baholari yo'q</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'attendance' && (
+            <Card>
+              <h3>Davomat yozuvlari</h3>
+              {student.attendance_records && student.attendance_records.length > 0 ? (
+                <div className="attendance-table">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Sana</th>
+                        <th>Fan</th>
+                        <th>Holat</th>
+                        <th>Izoh</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              <div className="text-4xl mb-2">👥</div>
-              <p>Davomat ma'lumotlari yo'q</p>
-            </div>
+                    </thead>
+                    <tbody>
+                      {student.attendance_records.map((record, index) => (
+                        <tr key={index}>
+                          <td>{formatDate(record.date)}</td>
+                          <td>{record.subject_name || '-'}</td>
+                          <td>
+                            <span className={`attendance-status ${record.status}`}>
+                              {ATTENDANCE_STATUS_LABELS[record.status] || record.status}
+                            </span>
+                          </td>
+                          <td>{record.notes || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="no-data">
+                  <div className="no-data-icon">👥</div>
+                  <p>Davomat yozuvlari yo'q</p>
+                </div>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
 
-      {activeTab === 'payments' && (
-        <Card title="To'lov tarixi">
-          {student.payment_records?.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Sana</th>
-                    <th>Miqdor</th>
-                    <th>Usul</th>
-                    <th>Izoh</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {student.payment_records.map((payment, index) => (
-                    <tr key={index}>
-                      <td>{formatDate(payment.payment_date)}</td>
-                      <td className="font-medium text-green-600">
-                        {payment.amount?.toLocaleString()} so'm
-                      </td>
-                      <td>{payment.payment_method}</td>
-                      <td>{payment.description || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              <div className="text-4xl mb-2">💰</div>
-              <p>To'lov ma'lumotlari yo'q</p>
-            </div>
+          {activeTab === 'payments' && (
+            <Card>
+              <h3>To'lov tarixi</h3>
+              {student.payment_records && student.payment_records.length > 0 ? (
+                <div className="payments-table">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Sana</th>
+                        <th>Miqdor</th>
+                        <th>Usul</th>
+                        <th>Izoh</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {student.payment_records.map((payment, index) => (
+                        <tr key={index}>
+                          <td>{formatDate(payment.payment_date)}</td>
+                          <td className="payment-amount">
+                            {payment.amount?.toLocaleString()} so'm
+                          </td>
+                          <td>{payment.payment_method}</td>
+                          <td>{payment.description || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="no-data">
+                  <div className="no-data-icon">💰</div>
+                  <p>To'lov ma'lumotlari yo'q</p>
+                </div>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
+        </div>
+      </Card>
 
-      {/* Edit Modal would go here - simplified for this example */}
+      {/* Edit Modal */}
       <Modal
         show={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="O'quvchini tahrirlash"
       >
-        <p>O'quvchi tahrirlash funksiyasi bu yerda bo'ladi...</p>
-        <div className="flex justify-end gap-2 mt-4">
+        <p>O'quvchi tahrirlash formasi bu yerda bo'ladi</p>
+        <div className="form-actions">
           <Button variant="secondary" onClick={() => setShowEditModal(false)}>
             Bekor qilish
           </Button>
