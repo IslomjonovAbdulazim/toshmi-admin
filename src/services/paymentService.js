@@ -50,6 +50,19 @@ export const paymentService = {
     }
   },
 
+  // Delete payment
+  deletePayment: async (paymentId) => {
+    console.log('Deleting payment:', paymentId);
+    try {
+      const response = await api.delete(`/admin/payments/${paymentId}`);
+      console.log('Payment deleted successfully:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Payment deletion failed:', error);
+      throw error;
+    }
+  },
+
   // Get payment statistics (if backend supports it in the future)
   getStats: async () => {
     try {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import StudentForm from '../components/forms/StudentForm';
+import StudentPaymentsModal from '../components/forms/StudentPaymentsModal';
 import { studentService } from '../services/studentService';
 import { groupService } from '../services/groupService';
 
@@ -14,6 +15,8 @@ const StudentsPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
   const [groups, setGroups] = useState([]);
+  const [showPaymentsModal, setShowPaymentsModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => {
     fetchStudents();
@@ -61,6 +64,11 @@ const StudentsPage = () => {
         alert('O\'quvchi o\'chirishda xatolik yuz berdi');
       }
     }
+  };
+
+  const handleViewPayments = (student) => {
+    setSelectedStudent(student);
+    setShowPaymentsModal(true);
   };
 
   const handleFormSuccess = () => {
@@ -189,7 +197,8 @@ const StudentsPage = () => {
       cursor: 'pointer',
       fontSize: '12px',
       fontWeight: '500',
-      marginRight: '8px'
+      marginRight: '8px',
+      marginBottom: '4px'
     },
     editBtn: {
       backgroundColor: '#f59e0b',
@@ -198,6 +207,13 @@ const StudentsPage = () => {
     deleteBtn: {
       backgroundColor: '#ef4444',
       color: 'white'
+    },
+    paymentsBtn: {
+      backgroundColor: '#059669',
+      color: 'white'
+    },
+    actionsCell: {
+      minWidth: '200px'
     },
     loading: {
       textAlign: 'center',
@@ -216,6 +232,16 @@ const StudentsPage = () => {
       textAlign: 'center',
       padding: '40px',
       color: '#6b7280'
+    },
+    noResults: {
+      textAlign: 'center',
+      padding: '40px',
+      color: '#6b7280',
+      backgroundColor: '#f9fafb'
+    },
+    noResultsIcon: {
+      fontSize: '48px',
+      marginBottom: '16px'
     }
   };
 
@@ -289,10 +315,15 @@ const StudentsPage = () => {
               </button>
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div style={styles.empty}>
+            <div style={searchTerm ? styles.noResults : styles.empty}>
               {searchTerm ? (
+                // No search results found
                 <>
-                  <p>"{searchTerm}" bo'yicha hech narsa topilmadi</p>
+                  <div style={styles.noResultsIcon}>🔍</div>
+                  <p><strong>"{searchTerm}" bo'yicha hech qanday o'quvchi topilmadi</strong></p>
+                  <p style={{fontSize: '14px', color: '#9ca3af', marginTop: '8px'}}>
+                    Qidiruv so'zini tekshiring yoki boshqa atama bilan qidiring
+                  </p>
                   <button
                     onClick={() => setSearchTerm('')}
                     style={{
@@ -305,10 +336,11 @@ const StudentsPage = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    Filtrni tozalash
+                    Qidiruvni tozalash
                   </button>
                 </>
               ) : (
+                // No students at all
                 <>
                   <p>Hozircha o'quvchilar mavjud emas</p>
                   <button
@@ -361,7 +393,16 @@ const StudentsPage = () => {
                         {student.is_active ? 'Faol' : 'Nofaol'}
                       </span>
                     </td>
-                    <td style={styles.td}>
+                    <td style={{...styles.td, ...styles.actionsCell}}>
+                      <button
+                        style={{...styles.actionBtn, ...styles.paymentsBtn}}
+                        onClick={() => handleViewPayments(student)}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
+                        title="To'lovlar tarixi"
+                      >
+                        💰 To'lovlar
+                      </button>
                       <button
                         style={{...styles.actionBtn, ...styles.editBtn}}
                         onClick={() => handleEdit(student)}
@@ -386,11 +427,23 @@ const StudentsPage = () => {
           )}
         </div>
 
+        {/* Student Form Modal */}
         {showForm && (
           <StudentForm
             studentId={editingStudent?.id}
             onClose={() => setShowForm(false)}
             onSuccess={handleFormSuccess}
+          />
+        )}
+
+        {/* Student Payments Modal */}
+        {showPaymentsModal && selectedStudent && (
+          <StudentPaymentsModal
+            student={selectedStudent}
+            onClose={() => {
+              setShowPaymentsModal(false);
+              setSelectedStudent(null);
+            }}
           />
         )}
       </div>

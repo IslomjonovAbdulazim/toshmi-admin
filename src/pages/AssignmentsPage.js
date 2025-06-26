@@ -1,68 +1,42 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/layout/Layout';
 import AssignmentForm from '../components/forms/AssignmentForm';
-import { teacherService } from '../services/teacherService';
-import { groupService } from '../services/groupService';
-import { subjectService } from '../services/subjectService';
+import AssignmentEditModal from '../components/forms/AssignmentEditModal';
+import { assignmentService } from '../services/assignmentService';
 
 const AssignmentsPage = () => {
   const [assignments, setAssignments] = useState([]);
+  const [unassigned, setUnassigned] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [teacherFilter, setTeacherFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'assigned', 'unassigned'
   const [groupFilter, setGroupFilter] = useState('all');
-  const [subjectFilter, setSubjectFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
-  const [stats, setStats] = useState({
-    totalAssignments: 0,
-    activeTeachers: 0,
-    assignedGroups: 0,
-    unassignedSubjects: 0
-  });
+  const [stats, setStats] = useState({});
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Fetch all required data
-      const [teachersRes, groupsRes, subjectsRes] = await Promise.all([
-        teacherService.getAll(),
-        groupService.getAll(),
-        subjectService.getAll()
+      const [assignmentsRes, unassignedRes] = await Promise.all([
+        assignmentService.getAllAssignments(),
+        assignmentService.getUnassignedSubjects()
       ]);
 
-      const teachersData = teachersRes.data;
-      const groupsData = groupsRes.data;
-      const subjectsData = subjectsRes.data;
+      const assignmentsData = assignmentsRes.data;
+      const unassignedData = unassignedRes.data;
 
-      // Extract assignments from teachers
-      const allAssignments = [];
-      teachersData.forEach(teacher => {
-        if (teacher.assigned_subjects && teacher.assigned_subjects.length > 0) {
-          teacher.assigned_subjects.forEach(assignment => {
-            allAssignments.push({
-              id: assignment.group_subject_id || Math.random(),
-              teacher_id: teacher.id,
-              teacher_name: teacher.name,
-              teacher_phone: teacher.phone,
-              teacher_active: teacher.is_active,
-              group_name: assignment.group_name,
-              subject_name: assignment.subject_name,
-              group_subject_id: assignment.group_subject_id
-            });
-          });
-        }
-      });
-
-      setAssignments(allAssignments);
-      calculateStats(allAssignments, teachersData, groupsData, subjectsData);
+      setAssignments(assignmentsData);
+      setUnassigned(unassignedData);
+      setStats(assignmentService.getAssignmentStats(assignmentsData));
 
     } catch (err) {
       console.error('Fetch error:', err);
-      setError('Tayinlovlar ma\'lumotlarini olishda xatolik');
+      setError('Ma\'lumotlarni olishda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
@@ -72,73 +46,95 @@ const AssignmentsPage = () => {
     fetchData();
   }, [fetchData]);
 
-  const calculateStats = (assignmentsData, teachersData, groupsData, subjectsData) => {
-    const activeTeachers = new Set(
-      assignmentsData
-        .filter(a => a.teacher_active)
-        .map(a => a.teacher_id)
-    ).size;
-
-    const assignedGroups = new Set(assignmentsData.map(a => a.group_name)).size;
-    
-    // Count subjects that don't have any assignments
-    const assignedSubjects = new Set(assignmentsData.map(a => a.subject_name));
-    const unassignedSubjects = subjectsData.filter(s => !assignedSubjects.has(s.name)).length;
-
-    setStats({
-      totalAssignments: assignmentsData.length,
-      activeTeachers,
-      assignedGroups,
-      unassignedSubjects
-    });
-  };
-
-  const handleAddAssignment = () => {
+  const handleCreateAssignment = () => {
+    setEditingAssignment(null);
     setShowForm(true);
   };
 
-  const handleFormSuccess = () => {
-    setShowForm(false);
-    fetchData();
+  const handleEditAssignment = (assignment) => {
+    setEditingAssignment(assignment);
   };
 
   const handleRemoveAssignment = async (assignment) => {
-    if (window.confirm(`${assignment.teacher_name}ning ${assignment.group_name} guruhidagi ${assignment.subject_name} fanini o'qitish tayinlovini bekor qilishni tasdiqlaysizmi?`)) {
+    if (window.confirm(`${assignment.teacher?.name || 'Tayinlanmagan'} o'qituvchisini ${assignment.group.name} guruhidagi ${assignment.subject.name} fanidan olib tashlashni tasdiqlaysizmi?`)) {
       try {
-        // Note: Backend might need a DELETE endpoint for assignments
-        // For now, we'll show a message
-        alert('Tayinlovni bekor qilish funksiyasi backendda qo\'shilishi kerak');
+        setActionLoading(true);
+        await assignmentService.removeAssignment(assignment.id);
+        await fetchData();
       } catch (err) {
-        alert('Tayinlovni bekor qilishda xatolik');
+        alert(err.response?.data?.detail || 'Tayinlovni o\'chirishda xatolik');
+      } finally {
+        setActionLoading(false);
       }
     }
   };
 
-  // Filter assignments
-  const filteredAssignments = assignments.filter(assignment => {
-    const searchMatch = 
-      assignment.teacher_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.group_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.subject_name.toLowerCase().includes(searchTerm.toLowerCase());
+  const handleUnassignTeacher = async (assignment) => {
+    if (window.confirm(`${assignment.teacher.name} o'qituvchisini ${assignment.subject.name} fanidan olib tashlashni tasdiqlaysizmi? (Fan saqlanib qoladi)`)) {
+      try {
+        setActionLoading(true);
+        await assignmentService.unassignTeacher(assignment.id);
+        await fetchData();
+      } catch (err) {
+        alert(err.response?.data?.detail || 'O\'qituvchini olib tashlashda xatolik');
+      } finally {
+        setActionLoading(false);
+      }
+    }
+  };
 
-    const teacherMatch = teacherFilter === 'all' || assignment.teacher_id === parseInt(teacherFilter);
-    const groupMatch = groupFilter === 'all' || assignment.group_name === groupFilter;
-    const subjectMatch = subjectFilter === 'all' || assignment.subject_name === subjectFilter;
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setEditingAssignment(null);
+    fetchData();
+  };
 
-    return searchMatch && teacherMatch && groupMatch && subjectMatch;
-  });
+  // Get unique groups for filter
+  const getUniqueGroups = () => {
+    const allGroups = [...assignments.map(a => a.group), ...unassigned.map(u => u.group)];
+    const uniqueGroups = allGroups.filter((group, index, arr) => 
+      arr.findIndex(g => g.id === group.id) === index
+    );
+    return uniqueGroups.sort((a, b) => a.name.localeCompare(b.name));
+  };
 
-  // Get unique values for filters
-  const getUniqueTeachers = () => [...new Set(assignments.map(a => ({ id: a.teacher_id, name: a.teacher_name })))];
-  const getUniqueGroups = () => [...new Set(assignments.map(a => a.group_name))];
-  const getUniqueSubjects = () => [...new Set(assignments.map(a => a.subject_name))];
+  // Filter assignments based on current filters
+  const getFilteredAssignments = () => {
+    let filtered = [...assignments];
+
+    if (activeTab === 'assigned') {
+      filtered = filtered.filter(a => a.has_teacher);
+    } else if (activeTab === 'unassigned') {
+      filtered = [...filtered.filter(a => !a.has_teacher), ...unassigned];
+    } else {
+      filtered = [...filtered, ...unassigned];
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(assignment => 
+        assignment.group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        assignment.subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        assignment.teacher?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (groupFilter !== 'all') {
+      filtered = filtered.filter(assignment => assignment.group.id === parseInt(groupFilter));
+    }
+
+    return filtered;
+  };
 
   const styles = {
     container: {
       maxWidth: '1600px',
-      margin: '0 auto'
+      margin: '0 auto',
+      padding: '0 16px'
     },
     header: {
+      marginBottom: '32px'
+    },
+    headerTop: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -147,393 +143,441 @@ const AssignmentsPage = () => {
       gap: '16px'
     },
     title: {
-      fontSize: '24px',
-      fontWeight: '600',
+      fontSize: '32px',
+      fontWeight: '700',
       color: '#111827',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '12px'
     },
     titleIcon: {
-      fontSize: '28px'
+      fontSize: '40px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text'
     },
-    controls: {
-      display: 'flex',
-      gap: '12px',
-      alignItems: 'center',
-      flexWrap: 'wrap'
+    subtitle: {
+      fontSize: '16px',
+      color: '#6b7280',
+      marginBottom: '24px',
+      maxWidth: '600px'
     },
-    viewToggle: {
-      display: 'flex',
-      backgroundColor: '#f3f4f6',
-      borderRadius: '8px',
-      padding: '4px'
-    },
-    viewBtn: {
-      padding: '8px 12px',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontSize: '12px',
-      transition: 'all 0.2s'
-    },
-    viewBtnActive: {
-      backgroundColor: '#2563eb',
-      color: 'white'
-    },
-    viewBtnInactive: {
-      backgroundColor: 'transparent',
-      color: '#6b7280'
-    },
-    filterSelect: {
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      backgroundColor: 'white',
-      minWidth: '140px'
-    },
-    searchInput: {
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minWidth: '300px'
-    },
-    addBtn: {
-      backgroundColor: '#2563eb',
+    createBtn: {
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white',
-      padding: '10px 20px',
+      padding: '14px 28px',
       border: 'none',
-      borderRadius: '8px',
+      borderRadius: '12px',
       cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '500',
+      fontSize: '16px',
+      fontWeight: '600',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '8px',
+      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+      transition: 'all 0.3s ease'
     },
-    // Statistics Cards
-    statsGrid: {
+    // Statistics Section
+    statsSection: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
       gap: '20px',
-      marginBottom: '24px'
+      marginBottom: '32px'
     },
     statCard: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '20px',
+      background: 'white',
+      borderRadius: '16px',
+      padding: '24px',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb'
+      border: '1px solid #f3f4f6',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
     },
-    statCardTotal: {
-      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-      color: 'white'
-    },
-    statCardTeachers: {
-      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-      color: 'white'
-    },
-    statCardGroups: {
-      background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-      color: 'white'
-    },
-    statCardUnassigned: {
-      background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-      color: 'white'
-    },
-    statHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '12px'
-    },
-    statTitle: {
-      fontSize: '14px',
-      fontWeight: '500',
-      opacity: 0.9
+    statCardHover: {
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
     },
     statIcon: {
-      fontSize: '24px'
+      fontSize: '32px',
+      marginBottom: '12px',
+      display: 'block'
     },
     statValue: {
       fontSize: '28px',
-      fontWeight: 'bold',
-      marginBottom: '8px'
+      fontWeight: '700',
+      color: '#111827',
+      marginBottom: '4px'
     },
-    statSubtext: {
-      fontSize: '12px',
-      opacity: 0.8
+    statLabel: {
+      fontSize: '14px',
+      color: '#6b7280',
+      fontWeight: '500'
     },
-    // Table View
-    card: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
+    // Controls Section
+    controlsSection: {
+      background: 'white',
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '24px',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      border: '1px solid #f3f4f6'
+    },
+    controlsTop: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '20px',
+      flexWrap: 'wrap',
+      gap: '16px'
+    },
+    tabsContainer: {
+      display: 'flex',
+      backgroundColor: '#f9fafb',
+      borderRadius: '12px',
+      padding: '4px',
       border: '1px solid #e5e7eb'
     },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse'
-    },
-    th: {
-      backgroundColor: '#f9fafb',
-      padding: '16px',
-      textAlign: 'left',
+    tab: {
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontSize: '14px',
       fontWeight: '600',
-      color: '#374151',
-      borderBottom: '1px solid #e5e7eb'
+      transition: 'all 0.2s ease',
+      minWidth: '100px'
     },
-    td: {
-      padding: '16px',
-      borderBottom: '1px solid #f3f4f6'
+    tabActive: {
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white',
+      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
     },
-    teacherInfo: {
+    tabInactive: {
+      backgroundColor: 'transparent',
+      color: '#6b7280'
+    },
+    filtersRow: {
       display: 'flex',
-      flexDirection: 'column'
+      gap: '16px',
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    },
+    searchInput: {
+      padding: '12px 16px',
+      border: '2px solid #e5e7eb',
+      borderRadius: '12px',
+      fontSize: '14px',
+      minWidth: '300px',
+      transition: 'border-color 0.2s ease'
+    },
+    filterSelect: {
+      padding: '12px 16px',
+      border: '2px solid #e5e7eb',
+      borderRadius: '12px',
+      fontSize: '14px',
+      backgroundColor: 'white',
+      minWidth: '150px',
+      transition: 'border-color 0.2s ease'
+    },
+    // Content Grid
+    contentGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+      gap: '20px'
+    },
+    assignmentCard: {
+      background: 'white',
+      borderRadius: '16px',
+      padding: '24px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      border: '1px solid #f3f4f6',
+      transition: 'all 0.3s ease',
+      position: 'relative'
+    },
+    assignmentCardHover: {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)'
+    },
+    cardHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: '16px'
+    },
+    cardTitle: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#111827',
+      marginBottom: '4px'
+    },
+    cardSubtitle: {
+      fontSize: '14px',
+      color: '#6b7280'
+    },
+    statusBadge: {
+      padding: '6px 12px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
+    },
+    statusAssigned: {
+      backgroundColor: '#d1fae5',
+      color: '#059669'
+    },
+    statusUnassigned: {
+      backgroundColor: '#fef3c7',
+      color: '#d97706'
+    },
+    cardContent: {
+      marginBottom: '20px'
+    },
+    infoRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      marginBottom: '12px',
+      padding: '8px 0'
+    },
+    infoIcon: {
+      fontSize: '18px',
+      minWidth: '20px'
+    },
+    infoText: {
+      fontSize: '14px',
+      color: '#374151',
+      fontWeight: '500'
     },
     teacherName: {
       fontWeight: '600',
       color: '#111827'
     },
-    teacherPhone: {
-      fontSize: '12px',
-      color: '#6b7280',
-      fontFamily: 'monospace'
-    },
-    assignmentBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '6px',
-      padding: '6px 12px',
-      borderRadius: '20px',
-      fontSize: '12px',
-      fontWeight: '500'
-    },
-    groupBadge: {
-      backgroundColor: '#dbeafe',
-      color: '#1e40af'
-    },
-    subjectBadge: {
-      backgroundColor: '#f0fdf4',
-      color: '#166534'
+    cardActions: {
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap'
     },
     actionBtn: {
-      padding: '6px 12px',
+      padding: '8px 16px',
       border: 'none',
-      borderRadius: '6px',
+      borderRadius: '8px',
       cursor: 'pointer',
       fontSize: '12px',
-      fontWeight: '500',
-      marginRight: '8px'
+      fontWeight: '600',
+      transition: 'all 0.2s ease',
+      flex: '1',
+      minWidth: '80px'
+    },
+    editBtn: {
+      backgroundColor: '#eff6ff',
+      color: '#2563eb',
+      border: '1px solid #bfdbfe'
+    },
+    unassignBtn: {
+      backgroundColor: '#fef3c7',
+      color: '#d97706',
+      border: '1px solid #fde68a'
     },
     removeBtn: {
       backgroundColor: '#fef2f2',
       color: '#dc2626',
       border: '1px solid #fecaca'
     },
-    // Grid View
-    gridContainer: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-      gap: '20px'
-    },
-    gridCard: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb',
-      transition: 'transform 0.2s, box-shadow 0.2s'
-    },
-    gridCardHover: {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-    },
-    gridCardHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '16px'
-    },
-    gridTeacherName: {
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#111827'
-    },
-    gridTeacherIcon: {
-      fontSize: '24px'
-    },
-    gridAssignmentsList: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px'
-    },
-    gridAssignmentItem: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '8px',
-      backgroundColor: '#f9fafb',
-      borderRadius: '8px'
-    },
-    gridAssignmentLeft: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
+    assignBtn: {
+      backgroundColor: '#f0fdf4',
+      color: '#16a34a',
+      border: '1px solid #bbf7d0'
     },
     loading: {
       textAlign: 'center',
-      padding: '40px',
+      padding: '60px 20px',
       color: '#6b7280'
     },
     error: {
       backgroundColor: '#fef2f2',
       border: '1px solid #fecaca',
       color: '#dc2626',
-      padding: '16px',
-      borderRadius: '8px',
+      padding: '20px',
+      borderRadius: '12px',
       textAlign: 'center'
     },
     empty: {
       textAlign: 'center',
-      padding: '40px',
+      padding: '60px 20px',
       color: '#6b7280'
     },
     emptyIcon: {
-      fontSize: '48px',
-      marginBottom: '16px'
+      fontSize: '64px',
+      marginBottom: '16px',
+      display: 'block'
+    },
+    emptyTitle: {
+      fontSize: '20px',
+      fontWeight: '600',
+      marginBottom: '8px',
+      color: '#374151'
+    },
+    emptyText: {
+      fontSize: '14px',
+      marginBottom: '24px'
     }
   };
+
+  const filteredAssignments = getFilteredAssignments();
 
   return (
     <Layout>
       <div style={styles.container}>
+        {/* Header */}
         <div style={styles.header}>
-          <h1 style={styles.title}>
-            <span style={styles.titleIcon}>🎯</span>
-            O'qituvchi tayinlovlari
-          </h1>
-          <div style={styles.controls}>
-            <div style={styles.viewToggle}>
-              <button
-                style={{
-                  ...styles.viewBtn,
-                  ...(viewMode === 'table' ? styles.viewBtnActive : styles.viewBtnInactive)
-                }}
-                onClick={() => setViewMode('table')}
-              >
-                📋 Jadval
-              </button>
-              <button
-                style={{
-                  ...styles.viewBtn,
-                  ...(viewMode === 'grid' ? styles.viewBtnActive : styles.viewBtnInactive)
-                }}
-                onClick={() => setViewMode('grid')}
-              >
-                🔲 Kartalar
-              </button>
+          <div style={styles.headerTop}>
+            <div>
+              <h1 style={styles.title}>
+                <span style={styles.titleIcon}>🎯</span>
+                Tayinlovlar boshqaruvi
+              </h1>
+              <p style={styles.subtitle}>
+                O'qituvchilarni guruhlarga fanlar bo'yicha tayinlang va boshqaring. 
+                Har bir guruh uchun barcha fanlar bo'yicha o'qituvchilar tayinlangan bo'lishi kerak.
+              </p>
             </div>
-            <select
-              value={teacherFilter}
-              onChange={(e) => setTeacherFilter(e.target.value)}
-              style={styles.filterSelect}
+            <button
+              style={styles.createBtn}
+              onClick={handleCreateAssignment}
+              onMouseOver={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.transform = 'none';
+                e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+              }}
             >
-              <option value="all">Barcha o'qituvchilar</option>
-              {getUniqueTeachers().map(teacher => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                </option>
+              <span>✨</span>
+              Yangi tayinlov
+            </button>
+          </div>
+
+          {/* Statistics */}
+          <div style={styles.statsSection}>
+            <div 
+              style={styles.statCard}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = styles.statCardHover.transform;
+                e.currentTarget.style.boxShadow = styles.statCardHover.boxShadow;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = styles.statCard.boxShadow;
+              }}
+            >
+              <span style={styles.statIcon}>📊</span>
+              <div style={styles.statValue}>{stats.totalAssignments || 0}</div>
+              <div style={styles.statLabel}>Jami tayinlovlar</div>
+            </div>
+            <div 
+              style={styles.statCard}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = styles.statCardHover.transform;
+                e.currentTarget.style.boxShadow = styles.statCardHover.boxShadow;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = styles.statCard.boxShadow;
+              }}
+            >
+              <span style={styles.statIcon}>✅</span>
+              <div style={styles.statValue}>{stats.assignedCount || 0}</div>
+              <div style={styles.statLabel}>Tayinlangan</div>
+            </div>
+            <div 
+              style={styles.statCard}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = styles.statCardHover.transform;
+                e.currentTarget.style.boxShadow = styles.statCardHover.boxShadow;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = styles.statCard.boxShadow;
+              }}
+            >
+              <span style={styles.statIcon}>⏳</span>
+              <div style={styles.statValue}>{stats.unassignedCount || 0}</div>
+              <div style={styles.statLabel}>Tayinlanmagan</div>
+            </div>
+            <div 
+              style={styles.statCard}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = styles.statCardHover.transform;
+                e.currentTarget.style.boxShadow = styles.statCardHover.boxShadow;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = styles.statCard.boxShadow;
+              }}
+            >
+              <span style={styles.statIcon}>👥</span>
+              <div style={styles.statValue}>{stats.activeTeachers || 0}</div>
+              <div style={styles.statLabel}>Faol o'qituvchilar</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div style={styles.controlsSection}>
+          <div style={styles.controlsTop}>
+            <div style={styles.tabsContainer}>
+              {[
+                { key: 'all', label: '🔄 Barchasi', count: assignments.length + unassigned.length },
+                { key: 'assigned', label: '✅ Tayinlangan', count: stats.assignedCount },
+                { key: 'unassigned', label: '⏳ Tayinlanmagan', count: stats.unassignedCount }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  style={{
+                    ...styles.tab,
+                    ...(activeTab === tab.key ? styles.tabActive : styles.tabInactive)
+                  }}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label} ({tab.count || 0})
+                </button>
               ))}
-            </select>
+            </div>
+          </div>
+
+          <div style={styles.filtersRow}>
+            <input
+              type="text"
+              placeholder="🔍 Guruh, fan yoki o'qituvchi nomi..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={styles.searchInput}
+              onFocus={(e) => e.target.style.borderColor = '#667eea'}
+              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+            />
             <select
               value={groupFilter}
               onChange={(e) => setGroupFilter(e.target.value)}
               style={styles.filterSelect}
+              onFocus={(e) => e.target.style.borderColor = '#667eea'}
+              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
             >
-              <option value="all">Barcha guruhlar</option>
+              <option value="all">📚 Barcha guruhlar</option>
               {getUniqueGroups().map(group => (
-                <option key={group} value={group}>
-                  {group}
+                <option key={group.id} value={group.id}>
+                  {group.name} ({group.academic_year})
                 </option>
               ))}
             </select>
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              style={styles.filterSelect}
-            >
-              <option value="all">Barcha fanlar</option>
-              {getUniqueSubjects().map(subject => (
-                <option key={subject} value={subject}>
-                  {subject}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="O'qituvchi, guruh yoki fan bo'yicha qidirish..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={styles.searchInput}
-            />
-            <button
-              style={styles.addBtn}
-              onClick={handleAddAssignment}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#1d4ed8'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#2563eb'}
-            >
-              <span>🎯</span>
-              Yangi tayinlov
-            </button>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <div style={styles.statsGrid}>
-          <div style={{...styles.statCard, ...styles.statCardTotal}}>
-            <div style={styles.statHeader}>
-              <div style={styles.statTitle}>Jami tayinlovlar</div>
-              <div style={styles.statIcon}>🎯</div>
-            </div>
-            <div style={styles.statValue}>{stats.totalAssignments}</div>
-            <div style={styles.statSubtext}>Faol tayinlovlar soni</div>
-          </div>
-
-          <div style={{...styles.statCard, ...styles.statCardTeachers}}>
-            <div style={styles.statHeader}>
-              <div style={styles.statTitle}>Faol o'qituvchilar</div>
-              <div style={styles.statIcon}>👩‍🏫</div>
-            </div>
-            <div style={styles.statValue}>{stats.activeTeachers}</div>
-            <div style={styles.statSubtext}>Tayinlov olgan o'qituvchilar</div>
-          </div>
-
-          <div style={{...styles.statCard, ...styles.statCardGroups}}>
-            <div style={styles.statHeader}>
-              <div style={styles.statTitle}>Qamrab olingan guruhlar</div>
-              <div style={styles.statIcon}>👥</div>
-            </div>
-            <div style={styles.statValue}>{stats.assignedGroups}</div>
-            <div style={styles.statSubtext}>Kamida 1 ta fan tayinlangan</div>
-          </div>
-
-          <div style={{...styles.statCard, ...styles.statCardUnassigned}}>
-            <div style={styles.statHeader}>
-              <div style={styles.statTitle}>Tayinlanmagan fanlar</div>
-              <div style={styles.statIcon}>⚠️</div>
-            </div>
-            <div style={styles.statValue}>{stats.unassignedSubjects}</div>
-            <div style={styles.statSubtext}>O'qituvchi tayinlanmagan</div>
           </div>
         </div>
 
         {/* Content */}
         {loading ? (
           <div style={styles.loading}>
-            <div className="spinner"></div>
+            <div className="spinner" style={{marginBottom: '16px'}}></div>
             <p>Tayinlovlar yuklanmoqda...</p>
           </div>
         ) : error ? (
@@ -556,179 +600,143 @@ const AssignmentsPage = () => {
           </div>
         ) : filteredAssignments.length === 0 ? (
           <div style={styles.empty}>
-            <div style={styles.emptyIcon}>🎯</div>
-            {assignments.length === 0 ? (
-              <>
-                <p>Hozircha tayinlovlar mavjud emas</p>
-                <button
-                  onClick={handleAddAssignment}
-                  style={styles.addBtn}
-                >
-                  Birinchi tayinlovni yaratish
-                </button>
-              </>
-            ) : (
-              <>
-                <p>Filtrlar bo'yicha hech narsa topilmadi</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setTeacherFilter('all');
-                    setGroupFilter('all');
-                    setSubjectFilter('all');
-                  }}
-                  style={{
-                    marginTop: '12px',
-                    backgroundColor: '#6b7280',
-                    color: 'white',
-                    padding: '8px 16px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Barcha filtrlarni tozalash
-                </button>
-              </>
+            <span style={styles.emptyIcon}>🎯</span>
+            <div style={styles.emptyTitle}>
+              {activeTab === 'unassigned' ? 'Barcha fanlar tayinlangan!' : 'Hech qanday tayinlov topilmadi'}
+            </div>
+            <div style={styles.emptyText}>
+              {searchTerm || groupFilter !== 'all' 
+                ? 'Filtrlarni o\'zgartirib ko\'ring yoki yangi tayinlov yarating'
+                : activeTab === 'unassigned' 
+                  ? 'Barcha guruh-fanlar kombinatsiyalari uchun o\'qituvchilar tayinlangan'
+                  : 'Birinchi tayinlovni yarating'
+              }
+            </div>
+            {(!searchTerm && groupFilter === 'all' && activeTab !== 'unassigned') && (
+              <button
+                onClick={handleCreateAssignment}
+                style={styles.createBtn}
+              >
+                <span>✨</span>
+                Birinchi tayinlovni yaratish
+              </button>
             )}
           </div>
-        ) : viewMode === 'table' ? (
-          // Table View
-          <div style={styles.card}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>O'qituvchi</th>
-                  <th style={styles.th}>Guruh</th>
-                  <th style={styles.th}>Fan</th>
-                  <th style={styles.th}>Amallar</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAssignments.map((assignment) => (
-                  <tr key={assignment.id}>
-                    <td style={styles.td}>
-                      <div style={styles.teacherInfo}>
-                        <div style={styles.teacherName}>👩‍🏫 {assignment.teacher_name}</div>
-                        <div style={styles.teacherPhone}>{assignment.teacher_phone}</div>
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{...styles.assignmentBadge, ...styles.groupBadge}}>
-                        👥 {assignment.group_name}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{...styles.assignmentBadge, ...styles.subjectBadge}}>
-                        📚 {assignment.subject_name}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        style={{...styles.actionBtn, ...styles.removeBtn}}
-                        onClick={() => handleRemoveAssignment(assignment)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#fecaca'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#fef2f2'}
-                      >
-                        Bekor qilish
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         ) : (
-          // Grid View
-          <div style={styles.gridContainer}>
-            {/* Group assignments by teacher */}
-            {Object.entries(
-              filteredAssignments.reduce((acc, assignment) => {
-                if (!acc[assignment.teacher_id]) {
-                  acc[assignment.teacher_id] = {
-                    teacher: {
-                      name: assignment.teacher_name,
-                      phone: assignment.teacher_phone
-                    },
-                    assignments: []
-                  };
-                }
-                acc[assignment.teacher_id].assignments.push(assignment);
-                return acc;
-              }, {})
-            ).map(([teacherId, data]) => (
+          <div style={styles.contentGrid}>
+            {filteredAssignments.map((assignment) => (
               <div 
-                key={teacherId} 
-                style={styles.gridCard}
+                key={assignment.id || `${assignment.group.id}-${assignment.subject.id}`}
+                style={styles.assignmentCard}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.transform = styles.gridCardHover.transform;
-                  e.currentTarget.style.boxShadow = styles.gridCardHover.boxShadow;
+                  e.currentTarget.style.transform = styles.assignmentCardHover.transform;
+                  e.currentTarget.style.boxShadow = styles.assignmentCardHover.boxShadow;
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = styles.gridCard.boxShadow;
+                  e.currentTarget.style.boxShadow = styles.assignmentCard.boxShadow;
                 }}
               >
-                <div style={styles.gridCardHeader}>
-                  <div style={styles.gridTeacherName}>
-                    {data.teacher.name}
+                <div style={styles.cardHeader}>
+                  <div>
+                    <div style={styles.cardTitle}>{assignment.group.name}</div>
+                    <div style={styles.cardSubtitle}>{assignment.group.academic_year}</div>
                   </div>
-                  <div style={styles.gridTeacherIcon}>👩‍🏫</div>
+                  <span style={{
+                    ...styles.statusBadge,
+                    ...(assignment.has_teacher ? styles.statusAssigned : styles.statusUnassigned)
+                  }}>
+                    {assignment.has_teacher ? 'Tayinlangan' : 'Tayinlanmagan'}
+                  </span>
                 </div>
-                <div style={{fontSize: '12px', color: '#6b7280', marginBottom: '16px', fontFamily: 'monospace'}}>
-                  {data.teacher.phone}
-                </div>
-                <div style={styles.gridAssignmentsList}>
-                  {data.assignments.map((assignment) => (
-                    <div key={assignment.id} style={styles.gridAssignmentItem}>
-                      <div style={styles.gridAssignmentLeft}>
-                        <span style={{fontSize: '14px', fontWeight: '500'}}>
-                          📚 {assignment.subject_name}
-                        </span>
-                        <span style={{fontSize: '12px', color: '#6b7280'}}>→</span>
-                        <span style={{fontSize: '14px', fontWeight: '500'}}>
-                          👥 {assignment.group_name}
-                        </span>
-                      </div>
-                      <button
-                        style={{
-                          backgroundColor: '#fef2f2',
-                          color: '#dc2626',
-                          border: '1px solid #fecaca',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => handleRemoveAssignment(assignment)}
-                      >
-                        ✕
-                      </button>
+
+                <div style={styles.cardContent}>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoIcon}>📚</span>
+                    <span style={styles.infoText}>{assignment.subject.name} ({assignment.subject.code})</span>
+                  </div>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoIcon}>👩‍🏫</span>
+                    <span style={styles.infoText}>
+                      {assignment.teacher ? (
+                        <span style={styles.teacherName}>{assignment.teacher.name}</span>
+                      ) : (
+                        <span style={{color: '#9ca3af', fontStyle: 'italic'}}>O'qituvchi tayinlanmagan</span>
+                      )}
+                    </span>
+                  </div>
+                  {assignment.teacher && (
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoIcon}>📱</span>
+                      <span style={styles.infoText}>{assignment.teacher.phone}</span>
                     </div>
-                  ))}
+                  )}
                 </div>
-                <div style={{
-                  marginTop: '12px',
-                  padding: '8px',
-                  backgroundColor: '#f0f9ff',
-                  borderRadius: '6px',
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  color: '#1e40af',
-                  fontWeight: '500'
-                }}>
-                  {data.assignments.length} ta tayinlov
+
+                <div style={styles.cardActions}>
+                  {assignment.has_teacher ? (
+                    <>
+                      <button
+                        style={styles.editBtn}
+                        onClick={() => handleEditAssignment(assignment)}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#dbeafe'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#eff6ff'}
+                        disabled={actionLoading}
+                      >
+                        ✏️ O'zgartirish
+                      </button>
+                      <button
+                        style={styles.unassignBtn}
+                        onClick={() => handleUnassignTeacher(assignment)}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#fde68a'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#fef3c7'}
+                        disabled={actionLoading}
+                      >
+                        👤➖ Olib tashlash
+                      </button>
+                      <button
+                        style={styles.removeBtn}
+                        onClick={() => handleRemoveAssignment(assignment)}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#fecaca'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                        disabled={actionLoading}
+                      >
+                        🗑️ O'chirish
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      style={styles.assignBtn}
+                      onClick={() => handleEditAssignment(assignment)}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#dcfce7'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = '#f0fdf4'}
+                      disabled={actionLoading}
+                    >
+                      👩‍🏫➕ O'qituvchi tayinlash
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Assignment Form Modal */}
+        {/* Modals */}
         {showForm && (
           <AssignmentForm
             onClose={() => setShowForm(false)}
             onSuccess={handleFormSuccess}
+          />
+        )}
+
+        {editingAssignment && (
+          <AssignmentEditModal
+            assignment={editingAssignment}
+            onClose={() => setEditingAssignment(null)}
+            onSuccess={() => {
+              setEditingAssignment(null);
+              fetchData();
+            }}
           />
         )}
       </div>
