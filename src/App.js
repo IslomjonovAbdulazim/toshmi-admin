@@ -9,6 +9,7 @@ import StudentsPage from './pages/StudentsPage';
 import ParentsPage from './pages/ParentsPage';
 import TeachersPage from './pages/TeachersPage';
 import GroupsPage from './pages/GroupsPage';
+import GroupSchedulePage from './pages/GroupSchedulePage';
 import PaymentsPage from './pages/PaymentsPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import { ROUTES } from './utils/constants';
@@ -99,6 +100,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <GroupsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/groups/:groupId/schedule" 
+        element={
+          <ProtectedRoute>
+            <GroupSchedulePage />
           </ProtectedRoute>
         } 
       />

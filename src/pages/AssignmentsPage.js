@@ -56,27 +56,13 @@ const AssignmentsPage = () => {
   };
 
   const handleRemoveAssignment = async (assignment) => {
-    if (window.confirm(`${assignment.teacher?.name || 'Tayinlanmagan'} o'qituvchisini ${assignment.group.name} guruhidagi ${assignment.subject.name} fanidan olib tashlashni tasdiqlaysizmi?`)) {
+    if (window.confirm(`${assignment.teacher?.name || 'Tayinlanmagan'} o'qituvchisini ${assignment.group.name} guruhidagi ${assignment.subject.name} fanidan o'chirishni tasdiqlaysizmi?`)) {
       try {
         setActionLoading(true);
         await assignmentService.removeAssignment(assignment.id);
         await fetchData();
       } catch (err) {
         alert(err.response?.data?.detail || 'Tayinlovni o\'chirishda xatolik');
-      } finally {
-        setActionLoading(false);
-      }
-    }
-  };
-
-  const handleUnassignTeacher = async (assignment) => {
-    if (window.confirm(`${assignment.teacher.name} o'qituvchisini ${assignment.subject.name} fanidan olib tashlashni tasdiqlaysizmi? (Fan saqlanib qoladi)`)) {
-      try {
-        setActionLoading(true);
-        await assignmentService.unassignTeacher(assignment.id);
-        await fetchData();
-      } catch (err) {
-        alert(err.response?.data?.detail || 'O\'qituvchini olib tashlashda xatolik');
       } finally {
         setActionLoading(false);
       }
@@ -132,57 +118,60 @@ const AssignmentsPage = () => {
       padding: '0 16px'
     },
     header: {
-      marginBottom: '32px'
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      borderRadius: '20px',
+      padding: '32px',
+      marginBottom: '32px',
+      color: 'white',
+      position: 'relative',
+      overflow: 'hidden'
     },
     headerTop: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       marginBottom: '24px',
       flexWrap: 'wrap',
-      gap: '16px'
+      gap: '20px'
     },
     title: {
       fontSize: '32px',
       fontWeight: '700',
-      color: '#111827',
+      margin: '0 0 8px 0',
       display: 'flex',
       alignItems: 'center',
       gap: '12px'
     },
     titleIcon: {
-      fontSize: '40px',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text'
+      fontSize: '36px'
     },
     subtitle: {
       fontSize: '16px',
-      color: '#6b7280',
-      marginBottom: '24px',
+      opacity: 0.9,
+      lineHeight: '1.5',
       maxWidth: '600px'
     },
     createBtn: {
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'rgba(255, 255, 255, 0.2)',
+      backdropFilter: 'blur(10px)',
+      border: '2px solid rgba(255, 255, 255, 0.3)',
       color: 'white',
       padding: '14px 28px',
-      border: 'none',
-      borderRadius: '12px',
+      borderRadius: '16px',
       cursor: 'pointer',
       fontSize: '16px',
       fontWeight: '600',
+      transition: 'all 0.3s ease',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
-      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-      transition: 'all 0.3s ease'
+      gap: '10px',
+      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
     },
     // Statistics Section
     statsSection: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
+      gap: '16px',
       marginBottom: '32px'
     },
     statCard: {
@@ -191,11 +180,12 @@ const AssignmentsPage = () => {
       padding: '24px',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
       border: '1px solid #f3f4f6',
-      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+      textAlign: 'center',
+      transition: 'all 0.3s ease'
     },
     statCardHover: {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+      transform: 'translateY(-4px)',
+      boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)'
     },
     statIcon: {
       fontSize: '32px',
@@ -282,14 +272,14 @@ const AssignmentsPage = () => {
     // Content Grid
     contentGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
-      gap: '20px'
+      gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+      gap: '24px'
     },
     assignmentCard: {
       background: 'white',
       borderRadius: '16px',
       padding: '24px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       border: '1px solid #f3f4f6',
       transition: 'all 0.3s ease',
       position: 'relative'
@@ -302,10 +292,10 @@ const AssignmentsPage = () => {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: '16px'
+      marginBottom: '20px'
     },
     cardTitle: {
-      fontSize: '18px',
+      fontSize: '20px',
       fontWeight: '600',
       color: '#111827',
       marginBottom: '4px'
@@ -315,7 +305,7 @@ const AssignmentsPage = () => {
       color: '#6b7280'
     },
     statusBadge: {
-      padding: '6px 12px',
+      padding: '8px 16px',
       borderRadius: '20px',
       fontSize: '12px',
       fontWeight: '600',
@@ -324,28 +314,29 @@ const AssignmentsPage = () => {
     },
     statusAssigned: {
       backgroundColor: '#d1fae5',
-      color: '#059669'
+      color: '#065f46'
     },
     statusUnassigned: {
       backgroundColor: '#fef3c7',
-      color: '#d97706'
+      color: '#92400e'
     },
     cardContent: {
-      marginBottom: '20px'
+      marginBottom: '24px'
     },
     infoRow: {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      marginBottom: '12px',
-      padding: '8px 0'
+      marginBottom: '16px',
+      padding: '12px 0'
     },
     infoIcon: {
-      fontSize: '18px',
-      minWidth: '20px'
+      width: '20px',
+      height: '20px',
+      opacity: 0.7
     },
     infoText: {
-      fontSize: '14px',
+      fontSize: '16px',
       color: '#374151',
       fontWeight: '500'
     },
@@ -353,41 +344,46 @@ const AssignmentsPage = () => {
       fontWeight: '600',
       color: '#111827'
     },
+    subjectName: {
+      color: '#7c3aed',
+      fontWeight: '600'
+    },
+    divider: {
+      height: '1px',
+      background: '#e5e7eb',
+      margin: '20px 0'
+    },
     cardActions: {
       display: 'flex',
-      gap: '8px',
+      gap: '12px',
       flexWrap: 'wrap'
     },
     actionBtn: {
-      padding: '8px 16px',
+      flex: 1,
+      padding: '12px 16px',
       border: 'none',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontSize: '12px',
+      borderRadius: '10px',
+      fontSize: '14px',
       fontWeight: '600',
+      cursor: 'pointer',
       transition: 'all 0.2s ease',
-      flex: '1',
-      minWidth: '80px'
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '6px',
+      minWidth: '120px'
     },
     editBtn: {
-      backgroundColor: '#eff6ff',
-      color: '#2563eb',
-      border: '1px solid #bfdbfe'
+      backgroundColor: '#3b82f6',
+      color: 'white'
     },
-    unassignBtn: {
-      backgroundColor: '#fef3c7',
-      color: '#d97706',
-      border: '1px solid #fde68a'
-    },
-    removeBtn: {
-      backgroundColor: '#fef2f2',
-      color: '#dc2626',
-      border: '1px solid #fecaca'
+    deleteBtn: {
+      backgroundColor: '#ef4444',
+      color: 'white'
     },
     assignBtn: {
-      backgroundColor: '#f0fdf4',
-      color: '#16a34a',
-      border: '1px solid #bbf7d0'
+      backgroundColor: '#10b981',
+      color: 'white'
     },
     loading: {
       textAlign: 'center',
@@ -506,21 +502,6 @@ const AssignmentsPage = () => {
               <div style={styles.statValue}>{stats.unassignedCount || 0}</div>
               <div style={styles.statLabel}>Tayinlanmagan</div>
             </div>
-            <div 
-              style={styles.statCard}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = styles.statCardHover.transform;
-                e.currentTarget.style.boxShadow = styles.statCardHover.boxShadow;
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = styles.statCard.boxShadow;
-              }}
-            >
-              <span style={styles.statIcon}>👥</span>
-              <div style={styles.statValue}>{stats.activeTeachers || 0}</div>
-              <div style={styles.statLabel}>Faol o'qituvchilar</div>
-            </div>
           </div>
         </div>
 
@@ -529,9 +510,9 @@ const AssignmentsPage = () => {
           <div style={styles.controlsTop}>
             <div style={styles.tabsContainer}>
               {[
-                { key: 'all', label: '🔄 Barchasi', count: assignments.length + unassigned.length },
-                { key: 'assigned', label: '✅ Tayinlangan', count: stats.assignedCount },
-                { key: 'unassigned', label: '⏳ Tayinlanmagan', count: stats.unassignedCount }
+                { key: 'all', label: 'Barchasi' },
+                { key: 'assigned', label: 'Tayinlangan' },
+                { key: 'unassigned', label: 'Tayinlanmagan' }
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -541,36 +522,37 @@ const AssignmentsPage = () => {
                   }}
                   onClick={() => setActiveTab(tab.key)}
                 >
-                  {tab.label} ({tab.count || 0})
+                  {tab.label}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div style={styles.filtersRow}>
-            <input
-              type="text"
-              placeholder="🔍 Guruh, fan yoki o'qituvchi nomi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={styles.searchInput}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-            <select
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-              style={styles.filterSelect}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="all">📚 Barcha guruhlar</option>
-              {getUniqueGroups().map(group => (
-                <option key={group.id} value={group.id}>
-                  {group.name} ({group.academic_year})
-                </option>
-              ))}
-            </select>
+            <div style={styles.filtersRow}>
+              <input
+                type="text"
+                placeholder="Guruh, fan yoki o'qituvchi bo'yicha qidirish..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={styles.searchInput}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+              
+              <select
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                style={styles.filterSelect}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              >
+                <option value="all">Barcha guruhlar</option>
+                {getUniqueGroups().map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -646,73 +628,72 @@ const AssignmentsPage = () => {
                     ...styles.statusBadge,
                     ...(assignment.has_teacher ? styles.statusAssigned : styles.statusUnassigned)
                   }}>
-                    {assignment.has_teacher ? 'Tayinlangan' : 'Tayinlanmagan'}
+                    {assignment.has_teacher ? 'TAYINLANGAN' : 'TAYINLANMAGAN'}
                   </span>
                 </div>
 
                 <div style={styles.cardContent}>
                   <div style={styles.infoRow}>
-                    <span style={styles.infoIcon}>📚</span>
-                    <span style={styles.infoText}>{assignment.subject.name} ({assignment.subject.code})</span>
-                  </div>
-                  <div style={styles.infoRow}>
-                    <span style={styles.infoIcon}>👩‍🏫</span>
-                    <span style={styles.infoText}>
-                      {assignment.teacher ? (
-                        <span style={styles.teacherName}>{assignment.teacher.name}</span>
-                      ) : (
-                        <span style={{color: '#9ca3af', fontStyle: 'italic'}}>O'qituvchi tayinlanmagan</span>
-                      )}
+                    <svg style={styles.infoIcon} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    <span style={{...styles.infoText, ...styles.subjectName}}>
+                      {assignment.subject.name} ({assignment.subject.code})
                     </span>
                   </div>
-                  {assignment.teacher && (
-                    <div style={styles.infoRow}>
-                      <span style={styles.infoIcon}>📱</span>
-                      <span style={styles.infoText}>{assignment.teacher.phone}</span>
-                    </div>
-                  )}
+                  
+                  <div style={styles.infoRow}>
+                    <svg style={styles.infoIcon} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                    <span style={{...styles.infoText, ...styles.teacherName}}>
+                      {assignment.teacher?.name || 'O\'qituvchi tayinlanmagan'}
+                    </span>
+                  </div>
                 </div>
-
+                
+                <div style={styles.divider}></div>
+                
                 <div style={styles.cardActions}>
                   {assignment.has_teacher ? (
                     <>
                       <button
-                        style={styles.editBtn}
+                        style={{...styles.actionBtn, ...styles.editBtn}}
                         onClick={() => handleEditAssignment(assignment)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#dbeafe'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#eff6ff'}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
                         disabled={actionLoading}
                       >
-                        ✏️ O'zgartirish
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                        O'zgartirish
                       </button>
                       <button
-                        style={styles.unassignBtn}
-                        onClick={() => handleUnassignTeacher(assignment)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#fde68a'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#fef3c7'}
-                        disabled={actionLoading}
-                      >
-                        👤➖ Olib tashlash
-                      </button>
-                      <button
-                        style={styles.removeBtn}
+                        style={{...styles.actionBtn, ...styles.deleteBtn}}
                         onClick={() => handleRemoveAssignment(assignment)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#fecaca'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
                         disabled={actionLoading}
                       >
-                        🗑️ O'chirish
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                        O'chirish
                       </button>
                     </>
                   ) : (
                     <button
-                      style={styles.assignBtn}
+                      style={{...styles.actionBtn, ...styles.assignBtn}}
                       onClick={() => handleEditAssignment(assignment)}
-                      onMouseOver={(e) => e.target.style.backgroundColor = '#dcfce7'}
-                      onMouseOut={(e) => e.target.style.backgroundColor = '#f0fdf4'}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
                       disabled={actionLoading}
                     >
-                      👩‍🏫➕ O'qituvchi tayinlash
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                      </svg>
+                      O'qituvchi tayinlash
                     </button>
                   )}
                 </div>

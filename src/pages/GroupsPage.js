@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import GroupForm from '../components/forms/GroupForm';
+import GroupScheduleModal from '../components/GroupScheduleModal';
 import { groupService } from '../services/groupService';
 
 const GroupsPage = () => {
@@ -13,6 +14,9 @@ const GroupsPage = () => {
   const [yearFilter, setYearFilter] = useState('all');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showStudents, setShowStudents] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleGroup, setScheduleGroup] = useState(null);
+    
 
   useEffect(() => {
     fetchGroups();
@@ -69,6 +73,10 @@ const GroupsPage = () => {
     } catch (err) {
       alert('Guruh ma\'lumotlarini olishda xatolik');
     }
+  };
+
+  const handleScheduleSetup = (group) => {
+    window.location.href = `/groups/${group.id}/schedule`;
   };
 
   const handleFormSuccess = () => {
@@ -226,6 +234,15 @@ const GroupsPage = () => {
     deleteBtn: {
       backgroundColor: '#ef4444',
       color: 'white'
+    },
+    scheduleBtn: {
+      backgroundColor: '#10b981',
+      color: 'white'
+    },
+    actionButtons: {
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap'
     },
     loading: {
       textAlign: 'center',
@@ -440,22 +457,33 @@ const GroupsPage = () => {
                       </div>
                     </td>
                     <td style={styles.td}>
-                      <button
-                        style={{...styles.actionBtn, ...styles.editBtn}}
-                        onClick={() => handleEdit(group)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#d97706'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#f59e0b'}
-                      >
-                        Tahrirlash
-                      </button>
-                      <button
-                        style={{...styles.actionBtn, ...styles.deleteBtn}}
-                        onClick={() => handleDelete(group)}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
-                      >
-                        O'chirish
-                      </button>
+                      <div style={styles.actionButtons}>
+                        <button
+                          style={{...styles.actionBtn, ...styles.scheduleBtn}}
+                          onClick={() => handleScheduleSetup(group)}
+                          onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+                          onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+                          title={`${group.name} dars jadvalini sozlash`}
+                        >
+                          📅 Jadval
+                        </button>
+                        <button
+                          style={{...styles.actionBtn, ...styles.editBtn}}
+                          onClick={() => handleEdit(group)}
+                          onMouseOver={(e) => e.target.style.backgroundColor = '#d97706'}
+                          onMouseOut={(e) => e.target.style.backgroundColor = '#f59e0b'}
+                        >
+                          Tahrirlash
+                        </button>
+                        <button
+                          style={{...styles.actionBtn, ...styles.deleteBtn}}
+                          onClick={() => handleDelete(group)}
+                          onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
+                          onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
+                        >
+                          O'chirish
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -502,6 +530,14 @@ const GroupsPage = () => {
               )}
             </div>
           </div>
+        )}
+
+        {/* Group Schedule Modal */}
+        {showSchedule && scheduleGroup && (
+          <GroupScheduleModal
+            group={scheduleGroup}
+            onClose={() => setShowSchedule(false)}
+          />
         )}
       </div>
     </Layout>
