@@ -7,6 +7,10 @@ import SubjectsPage from './pages/SubjectsPage';
 import NewsPage from './pages/NewsPage';
 import StudentsPage from './pages/StudentsPage';
 import ParentsPage from './pages/ParentsPage';
+import TeachersPage from './pages/TeachersPage';
+import GroupsPage from './pages/GroupsPage';
+import PaymentsPage from './pages/PaymentsPage';
+import AssignmentsPage from './pages/AssignmentsPage';
 import { ROUTES } from './utils/constants';
 
 // Protected Route component
@@ -65,6 +69,38 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ParentsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path={ROUTES.TEACHERS} 
+        element={
+          <ProtectedRoute>
+            <TeachersPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path={ROUTES.GROUPS} 
+        element={
+          <ProtectedRoute>
+            <GroupsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path={ROUTES.PAYMENTS} 
+        element={
+          <ProtectedRoute>
+            <PaymentsPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path={ROUTES.ASSIGNMENTS} 
+        element={
+          <ProtectedRoute>
+            <AssignmentsPage />
           </ProtectedRoute>
         } 
       />
