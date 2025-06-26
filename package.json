@@ -1,38 +1,28 @@
 {
-  "name": "school-admin-panel",
-  "version": "2.0.0",
+  "name": "toshmi-admin",
+  "version": "0.1.0",
   "private": true,
-  "description": "Modern admin panel for School Management System",
-  "keywords": [
-    "school",
-    "management",
-    "admin",
-    "education"
-  ],
-  "author": "School Management Team",
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.30.1",
+    "axios": "^1.10.0",
+    "cra-template": "1.3.0",
+    "lucide-react": "^0.523.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.58.1",
+    "react-router-dom": "^7.6.2",
     "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "lint": "eslint src/**/*.{js,jsx}",
-    "format": "prettier --write src/**/*.{js,jsx,css,md}"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
-    ],
-    "rules": {
-      "no-unused-vars": "warn",
-      "no-console": "off"
-    }
+    ]
   },
   "browserslist": {
     "production": [
@@ -45,11 +35,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "proxy": "https://islomjonovabdulazim-toshmi-backend-0914.twc1.net",
-  "homepage": ".",
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
   }
 }

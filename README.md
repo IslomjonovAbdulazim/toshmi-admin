@@ -1,93 +1,70 @@
-# Education Center Management System - Admin Panel
+# Getting Started with Create React App
 
-Ta'lim markazi boshqaruv tizimining admin paneli. FastAPI backend bilan ishlash uchun mo'ljallangan.
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Xususiyatlari
+## Available Scripts
 
-### Foydalanuvchilar boshqaruvi
-- **O'quvchilar**: Yaratish, tahrirlash, ota-ona tayinlash, guruh o'zgartirish
-- **O'qituvchilar**: Yaratish, tahrirlash, tayinlangan guruhlarni ko'rish
-- **Ota-onalar**: Yaratish, tahrirlash, bolalarni ko'rish
+In the project directory, you can run:
 
-### Ta'lim boshqaruvi
-- **Guruhlar**: Yaratish, o'qituvchilarni fanlarga tayinlash
-- **Fanlar**: Yaratish va boshqarish
-- **Dars jadvali**: Haftalik jadval tuzish
+### `npm start`
 
-### Boshqa funksiyalar
-- **To'lovlar**: To'lovlarni yozib olish va kuzatish
-- **Yangiliklar**: E'lonlar yaratish va nashr etish
-- **Hisobotlar**: Tizim statistikasi va guruh natijalari
-- **Parol boshqaruvi**: Admin barcha foydalanuvchilar parolini o'zgartira oladi
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-## O'rnatish
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
 
-### 1. Loyihani klonlash
-```bash
-git clone <repository-url>
-cd education-center-admin
-```
+### `npm test`
 
-### 2. Paketlarni o'rnatish
-```bash
-npm install
-```
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### 3. Environment o'rnatish
-`.env` faylini yarating va backend URL ni qo'shing:
-```
-REACT_APP_API_URL=https://islomjonovabdulazim-toshmi-backend-ac2b.twc1.net
-```
+### `npm run build`
 
-### 4. Loyihani ishga tushirish
-```bash
-npm start
-```
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-Brauzerda `http://localhost:3000` ochiladi.
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-## Test ma'lumotlar
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-Backend texnik hujjatida ko'rsatilgan test ma'lumotlar:
-- **Admin**: telefon=990330919, parol=admin123
-- **O'qituvchi**: telefon=998901111111, parol=teacher123  
-- **O'quvchi**: telefon=998902222222, parol=student123
-- **Ota-ona**: telefon=998903333333, parol=parent123
+### `npm run eject`
 
-## Loyiha tuzilishi
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-```
-src/
-├── components/          # Qayta ishlatiladigan komponentlar
-│   ├── Layout/         # Asosiy tartib (Header, Sidebar)
-│   ├── Common/         # Umumiy komponentlar (Button, Input, Modal)
-│   └── Forms/          # Form komponentlari
-├── pages/              # Sahifalar
-│   ├── Users/          # Foydalanuvchilar sahifalari
-│   ├── Academic/       # Ta'lim boshqaruvi sahifalari
-│   └── ...            # Boshqa sahifalar
-├── hooks/              # React hooks
-├── services/           # API xizmatlari
-├── utils/              # Yordamchi funksiyalar
-└── styles/             # CSS fayllar
-```
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-## Texnologiyalar
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-- **React 18** - Frontend framework
-- **React Router** - Marshrutlash
-- **React Context** - State boshqaruvi (Auth)
-- **Fetch API** - Backend bilan aloqa
-- **CSS** - Styling (minimal, clean design)
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-## API Integration
+## Learn More
 
-Backend bilan barcha aloqa `src/services/api.js` orqali amalga oshiriladi. JWT token authentication ishlatiladi.
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-## Production Build
+To learn React, check out the [React documentation](https://reactjs.org/).
 
-```bash
-npm run build
-```
+### Code Splitting
 
-Build fayllar `build/` papkada paydo bo'ladi.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)

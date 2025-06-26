@@ -1,124 +1,43 @@
 <!DOCTYPE html>
-<html lang="uz">
-
-<head>
+<html lang="en">
+  <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1a202c" />
-    <meta name="description" content="Maktab boshqaruv tizimi - Admin paneli" />
-    <title>Admin Panel - Maktab Tizimi</title>
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
 
-    <!-- Preload fonts for better performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Loading screen styles -->
-    <style>
-        /* Loading screen */
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            z-index: 9999;
-            transition: opacity 0.3s ease;
-        }
-
-        .loading-spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid #f3f4f6;
-            border-top: 4px solid #1a202c;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        .loading-text {
-            color: #4b5563;
-            font-size: 16px;
-            font-weight: 500;
-        }
-
-        .loading-subtitle {
-            color: #9ca3af;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Fade out animation */
-        .loading-fade-out {
-            opacity: 0;
-            pointer-events: none;
-        }
-    </style>
-</head>
-
-<body>
-    <noscript>
-        Bu veb-sayt ishlashi uchun JavaScript yoqilishi kerak.
-    </noscript>
-
-    <!-- Loading Screen -->
-    <div id="loading-screen">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Admin Panel yuklanmoqda...</div>
-        <div class="loading-subtitle">Iltimos, kuting</div>
-    </div>
-
-    <!-- React Root -->
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
 
-    <script>
-        // Hide loading screen when React app loads
-        window.addEventListener('load', function () {
-            setTimeout(function () {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.classList.add('loading-fade-out');
-                    setTimeout(function () {
-                        loadingScreen.style.display = 'none';
-                    }, 300);
-                }
-            }, 500);
-        });
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
 
-        // Error handling
-        window.addEventListener('error', function (e) {
-            console.error('Application Error:', e.error);
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.innerHTML = `
-                    <div style="text-align: center; color: #dc2626;">
-                        <h3>Xatolik yuz berdi</h3>
-                        <p>Sahifani qayta yuklang yoki administrator bilan bog'laning</p>
-                        <button onclick="window.location.reload()" 
-                                style="padding: 8px 16px; margin-top: 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            Sahifani qayta yuklash
-                        </button>
-                    </div>
-                `;
-            }
-        });
-    </script>
-</body>
-
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
 </html>
