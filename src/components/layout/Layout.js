@@ -1,9 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
+
+  // Check if device is mobile
+  const checkIfMobile = useCallback(() => {
+    setIsMobile(window.innerWidth <= 768);
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, [checkIfMobile]);
+
+  // Handle menu item click
+  const handleMenuItemClick = (path) => {
+    // On mobile, close sidebar after selection
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+    // Navigate to the path
+    window.location.href = path;
+  };
+
+  // Handle backdrop click on mobile
+  const handleBackdropClick = () => {
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
 
   const menuItems = [
     { name: 'Bosh sahifa', path: '/', icon: '🏠' },
@@ -23,15 +53,31 @@ const Layout = ({ children }) => {
       minHeight: '100vh',
       backgroundColor: '#f9fafb'
     },
+    // Mobile backdrop
+    backdrop: {
+      display: isMobile && sidebarOpen ? 'block' : 'none',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 999
+    },
     sidebar: {
-      width: sidebarOpen ? '250px' : '70px',
+      width: isMobile 
+        ? (sidebarOpen ? '250px' : '0px')
+        : (sidebarOpen ? '250px' : '70px'),
       backgroundColor: '#1e293b',
       color: 'white',
       transition: 'width 0.3s ease',
       position: 'fixed',
       height: '100vh',
       zIndex: 1000,
-      overflowY: 'auto'
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      // On mobile, hide completely when closed
+      transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
     },
     sidebarHeader: {
       padding: '20px',
@@ -39,14 +85,14 @@ const Layout = ({ children }) => {
       textAlign: 'center'
     },
     logo: {
-      fontSize: sidebarOpen ? '18px' : '24px',
+      fontSize: (isMobile ? sidebarOpen : sidebarOpen) ? '18px' : '24px',
       fontWeight: 'bold',
-      marginBottom: sidebarOpen ? '5px' : '0'
+      marginBottom: (isMobile ? sidebarOpen : sidebarOpen) ? '5px' : '0'
     },
     subtitle: {
       fontSize: '12px',
       color: '#94a3b8',
-      display: sidebarOpen ? 'block' : 'none'
+      display: (isMobile ? sidebarOpen : sidebarOpen) ? 'block' : 'none'
     },
     menuItem: {
       display: 'flex',
@@ -61,16 +107,18 @@ const Layout = ({ children }) => {
     },
     menuIcon: {
       fontSize: '20px',
-      marginRight: sidebarOpen ? '15px' : '0',
+      marginRight: (isMobile ? sidebarOpen : sidebarOpen) ? '15px' : '0',
       minWidth: '20px'
     },
     menuText: {
-      display: sidebarOpen ? 'block' : 'none',
+      display: (isMobile ? sidebarOpen : sidebarOpen) ? 'block' : 'none',
       fontSize: '14px'
     },
     main: {
       flex: 1,
-      marginLeft: sidebarOpen ? '250px' : '70px',
+      marginLeft: isMobile 
+        ? '0px'  // No margin on mobile
+        : (sidebarOpen ? '250px' : '70px'),
       transition: 'margin-left 0.3s ease'
     },
     header: {
@@ -91,43 +139,52 @@ const Layout = ({ children }) => {
       border: 'none',
       fontSize: '20px',
       cursor: 'pointer',
-      padding: '8px'
+      padding: '8px',
+      borderRadius: '4px',
+      transition: 'background-color 0.2s'
     },
     headerTitle: {
-      fontSize: '20px',
+      fontSize: isMobile ? '18px' : '20px',
       fontWeight: '600',
       color: '#111827'
     },
     userInfo: {
       display: 'flex',
       alignItems: 'center',
-      gap: '16px'
+      gap: isMobile ? '8px' : '16px'
     },
     userName: {
       fontSize: '14px',
-      color: '#6b7280'
+      color: '#6b7280',
+      display: isMobile ? 'none' : 'block'  // Hide username on mobile
     },
     logoutBtn: {
       backgroundColor: '#dc2626',
       color: 'white',
-      padding: '8px 16px',
+      padding: isMobile ? '6px 12px' : '8px 16px',
       border: 'none',
       borderRadius: '6px',
       cursor: 'pointer',
       fontSize: '14px'
     },
     content: {
-      padding: '24px'
+      padding: isMobile ? '16px' : '24px'
     }
   };
 
   return (
     <div style={styles.container}>
+      {/* Mobile backdrop */}
+      <div 
+        style={styles.backdrop}
+        onClick={handleBackdropClick}
+      />
+      
       {/* Sidebar */}
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.logo}>
-            {sidebarOpen ? 'Admin Panel' : 'A'}
+            {(isMobile ? sidebarOpen : sidebarOpen) ? 'Admin Panel' : 'A'}
           </div>
           <div style={styles.subtitle}>
             Maktab Boshqaruv Tizimi
@@ -141,7 +198,7 @@ const Layout = ({ children }) => {
               style={styles.menuItem}
               onMouseOver={(e) => e.target.style.backgroundColor = '#334155'}
               onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-              onClick={() => window.location.href = item.path}
+              onClick={() => handleMenuItemClick(item.path)}
             >
               <span style={styles.menuIcon}>{item.icon}</span>
               <span style={styles.menuText}>{item.name}</span>
@@ -158,6 +215,8 @@ const Layout = ({ children }) => {
             <button
               style={styles.toggleBtn}
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+              onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               ☰
             </button>
