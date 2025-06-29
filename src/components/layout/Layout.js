@@ -20,17 +20,15 @@ const Layout = ({ children }) => {
 
   // Handle menu item click
   const handleMenuItemClick = (path) => {
-    // On mobile, close sidebar after selection
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
+    // Always close sidebar after selection (since it's always overlay)
+    setSidebarOpen(false);
     // Navigate to the path
     window.location.href = path;
   };
 
-  // Handle backdrop click on mobile
+  // Handle backdrop click
   const handleBackdropClick = () => {
-    if (isMobile && sidebarOpen) {
+    if (sidebarOpen) {
       setSidebarOpen(false);
     }
   };
@@ -53,9 +51,9 @@ const Layout = ({ children }) => {
       minHeight: '100vh',
       backgroundColor: '#f9fafb'
     },
-    // Mobile backdrop
+    // Backdrop when sidebar is open
     backdrop: {
-      display: isMobile && sidebarOpen ? 'block' : 'none',
+      display: sidebarOpen ? 'block' : 'none',  // Show backdrop whenever sidebar is open
       position: 'fixed',
       top: 0,
       left: 0,
@@ -65,9 +63,7 @@ const Layout = ({ children }) => {
       zIndex: 999
     },
     sidebar: {
-      width: isMobile 
-        ? (sidebarOpen ? '250px' : '0px')
-        : (sidebarOpen ? '250px' : '70px'),
+      width: sidebarOpen ? '250px' : '0px',  // Always: fully open or completely hidden
       backgroundColor: '#1e293b',
       color: 'white',
       transition: 'width 0.3s ease',
@@ -76,8 +72,8 @@ const Layout = ({ children }) => {
       zIndex: 1000,
       overflowY: 'auto',
       overflowX: 'hidden',
-      // On mobile, hide completely when closed
-      transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
+      // Hide completely when closed
+      transform: !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
     },
     sidebarHeader: {
       padding: '20px',
@@ -85,14 +81,14 @@ const Layout = ({ children }) => {
       textAlign: 'center'
     },
     logo: {
-      fontSize: (isMobile ? sidebarOpen : sidebarOpen) ? '18px' : '24px',
+      fontSize: sidebarOpen ? '18px' : '24px',
       fontWeight: 'bold',
-      marginBottom: (isMobile ? sidebarOpen : sidebarOpen) ? '5px' : '0'
+      marginBottom: sidebarOpen ? '5px' : '0'
     },
     subtitle: {
       fontSize: '12px',
       color: '#94a3b8',
-      display: (isMobile ? sidebarOpen : sidebarOpen) ? 'block' : 'none'
+      display: sidebarOpen ? 'block' : 'none'
     },
     menuItem: {
       display: 'flex',
@@ -107,18 +103,16 @@ const Layout = ({ children }) => {
     },
     menuIcon: {
       fontSize: '20px',
-      marginRight: (isMobile ? sidebarOpen : sidebarOpen) ? '15px' : '0',
+      marginRight: sidebarOpen ? '15px' : '0',
       minWidth: '20px'
     },
     menuText: {
-      display: (isMobile ? sidebarOpen : sidebarOpen) ? 'block' : 'none',
+      display: sidebarOpen ? 'block' : 'none',
       fontSize: '14px'
     },
     main: {
       flex: 1,
-      marginLeft: isMobile 
-        ? '0px'  // No margin on mobile
-        : (sidebarOpen ? '250px' : '70px'),
+      marginLeft: '0px',  // No margin - sidebar is always overlay
       transition: 'margin-left 0.3s ease'
     },
     header: {
@@ -174,7 +168,7 @@ const Layout = ({ children }) => {
 
   return (
     <div style={styles.container}>
-      {/* Mobile backdrop */}
+      {/* Backdrop when sidebar is open */}
       <div 
         style={styles.backdrop}
         onClick={handleBackdropClick}
@@ -184,7 +178,7 @@ const Layout = ({ children }) => {
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.logo}>
-            {(isMobile ? sidebarOpen : sidebarOpen) ? 'Admin Panel' : 'A'}
+            {sidebarOpen ? 'Admin Panel' : 'A'}
           </div>
           <div style={styles.subtitle}>
             Maktab Boshqaruv Tizimi
