@@ -534,7 +534,6 @@ const StudentsPage = () => {
                     <th style={styles.th}>Guruh</th>
                     <th style={styles.th}>Ota-ona</th>
                     <th style={styles.th}>Bitirish yili</th>
-                    <th style={styles.th}>Holat</th>
                     <th style={styles.th}>Faollik holati</th>
                     <th style={styles.th}>Amallar</th>
                   </tr>
@@ -560,14 +559,6 @@ const StudentsPage = () => {
                       </td>
                       <td style={styles.td}>
                         {student.graduation_year || 'Belgilanmagan'}
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{
-                          ...styles.badge,
-                          ...(student.is_active ? styles.statusActive : styles.statusInactive)
-                        }}>
-                          {student.is_active ? 'Faol' : 'Nofaol'}
-                        </span>
                       </td>
                       <td style={styles.td}>
                         {student.activityInfo ? (
