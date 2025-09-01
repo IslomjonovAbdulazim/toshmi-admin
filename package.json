@@ -17,10 +17,10 @@
     "web-vitals": "2.1.4"
   },
   "scripts": {
-      "start": "rescripts start",
-  "build": "rescripts build",
-  "test": "rescripts test",
-  "eject": "rescripts eject",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
     "dev": "react-scripts start",
     "serve": "serve -s build",
     "clean": "rm -rf build node_modules package-lock.json && npm install"
