@@ -333,7 +333,6 @@ const ParentsPage = () => {
                 <tr>
                   <th style={styles.th}>To'liq ism</th>
                   <th style={styles.th}>Telefon</th>
-                  <th style={styles.th}>Holat</th>
                   <th style={styles.th}>Faollik holati</th>
                   <th style={styles.th}>Amallar</th>
                 </tr>
@@ -346,14 +345,6 @@ const ParentsPage = () => {
                     </td>
                     <td style={styles.td}>
                       <div style={styles.phone}>{parent.phone}</div>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.badge,
-                        ...(parent.is_active ? styles.statusActive : styles.statusInactive)
-                      }}>
-                        {parent.is_active ? 'Faol' : 'Nofaol'}
-                      </span>
                     </td>
                     <td style={styles.td}>
                       {parent.activityInfo ? (
