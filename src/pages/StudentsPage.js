@@ -4,6 +4,7 @@ import StudentForm from '../components/forms/StudentForm';
 import StudentPaymentsModal from '../components/forms/StudentPaymentsModal';
 import { studentService } from '../services/studentService';
 import { groupService } from '../services/groupService';
+import { activityService } from '../services/activityService';
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -19,11 +20,39 @@ const StudentsPage = () => {
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [activityData, setActivityData] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     fetchStudents();
     fetchGroups();
+    connectToActivityFeed();
+    
+    return () => {
+      activityService.disconnect('students');
+    };
   }, []);
+
+  const connectToActivityFeed = () => {
+    activityService.connect(
+      'students',
+      (data) => {
+        if (data.type === 'student_activity_update') {
+          setActivityData(data.data);
+        }
+      },
+      (error) => {
+        console.error('Activity WebSocket error:', error);
+        setIsConnected(false);
+      },
+      () => {
+        setIsConnected(true);
+      },
+      () => {
+        setIsConnected(false);
+      }
+    );
+  };
 
   const fetchStudents = async () => {
     try {
@@ -100,9 +129,17 @@ const StudentsPage = () => {
     fetchStudents();
   };
 
-  // Enhanced filtering logic
+  // Enhanced filtering logic with activity data
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    const studentsWithActivity = students.map(student => {
+      const activityInfo = activityData.find(activity => activity.user_id === student.id);
+      return {
+        ...student,
+        activityInfo: activityInfo || null
+      };
+    });
+    
+    return studentsWithActivity.filter(student => {
       // Search filter (name, phone, group name, parent phone)
       const searchMatch = !searchTerm || (
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -284,6 +321,19 @@ const StudentsPage = () => {
     },
     actionsCell: {
       minWidth: '220px'
+    },
+    onlineStatus: {
+      backgroundColor: '#dcfce7',
+      color: '#166534'
+    },
+    offlineStatus: {
+      backgroundColor: '#fef2f2',
+      color: '#dc2626'
+    },
+    lastActiveText: {
+      fontSize: '11px',
+      color: '#6b7280',
+      marginTop: '2px'
     },
     loading: {
       textAlign: 'center',
@@ -493,6 +543,7 @@ const StudentsPage = () => {
                     <th style={styles.th}>Ota-ona</th>
                     <th style={styles.th}>Bitirish yili</th>
                     <th style={styles.th}>Holat</th>
+                    <th style={styles.th}>Faollik holati</th>
                     <th style={styles.th}>Amallar</th>
                   </tr>
                 </thead>
@@ -525,6 +576,35 @@ const StudentsPage = () => {
                         }}>
                           {student.is_active ? 'Faol' : 'Nofaol'}
                         </span>
+                      </td>
+                      <td style={styles.td}>
+                        {student.activityInfo ? (
+                          <div>
+                            <span style={{
+                              ...styles.badge,
+                              ...(student.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
+                            }}>
+                              {student.activityInfo.is_online ? (
+                                <>🟢 Onlayn</>
+                              ) : (
+                                <>🔴 Offline</>
+                              )}
+                            </span>
+                            {!student.activityInfo.is_online && student.activityInfo.last_active && (
+                              <div style={styles.lastActiveText}>
+                                {activityService.getUserActivityStatus(student.activityInfo.last_active).statusText}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{
+                            ...styles.badge,
+                            backgroundColor: '#f3f4f6',
+                            color: '#6b7280'
+                          }}>
+                            Ma'lumot yo'q
+                          </span>
+                        )}
                       </td>
                       <td style={{...styles.td, ...styles.actionsCell}}>
                         <button

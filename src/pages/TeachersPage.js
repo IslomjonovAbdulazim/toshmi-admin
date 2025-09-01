@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import TeacherForm from '../components/forms/TeacherForm';
 import { teacherService } from '../services/teacherService';
+import { activityService } from '../services/activityService';
 
 const TeachersPage = () => {
   const [teachers, setTeachers] = useState([]);
@@ -11,10 +12,38 @@ const TeachersPage = () => {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activityData, setActivityData] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     fetchTeachers();
+    connectToActivityFeed();
+    
+    return () => {
+      activityService.disconnect('teachers');
+    };
   }, []);
+
+  const connectToActivityFeed = () => {
+    activityService.connect(
+      'teachers',
+      (data) => {
+        if (data.type === 'teacher_activity_update') {
+          setActivityData(data.data);
+        }
+      },
+      (error) => {
+        console.error('Activity WebSocket error:', error);
+        setIsConnected(false);
+      },
+      () => {
+        setIsConnected(true);
+      },
+      () => {
+        setIsConnected(false);
+      }
+    );
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -62,7 +91,13 @@ const TeachersPage = () => {
     fetchTeachers();
   };
 
-  const filteredTeachers = teachers.filter(teacher => {
+  const filteredTeachers = teachers.map(teacher => {
+    const activityInfo = activityData.find(activity => activity.user_id === teacher.id);
+    return {
+      ...teacher,
+      activityInfo: activityInfo || null
+    };
+  }).filter(teacher => {
     // Search filter
     const searchMatch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       teacher.phone.includes(searchTerm);
@@ -235,6 +270,19 @@ const TeachersPage = () => {
       textAlign: 'center',
       padding: '40px',
       color: '#6b7280'
+    },
+    onlineStatus: {
+      backgroundColor: '#dcfce7',
+      color: '#166534'
+    },
+    offlineStatus: {
+      backgroundColor: '#fef2f2',
+      color: '#dc2626'
+    },
+    lastActiveText: {
+      fontSize: '11px',
+      color: '#6b7280',
+      marginTop: '2px'
     }
   };
 
@@ -335,6 +383,7 @@ const TeachersPage = () => {
                   <th style={styles.th}>Telefon</th>
                   <th style={styles.th}>Tayinlovlar</th>
                   <th style={styles.th}>Holat</th>
+                  <th style={styles.th}>Faollik holati</th>
                   <th style={styles.th}>Amallar</th>
                 </tr>
               </thead>
@@ -368,6 +417,35 @@ const TeachersPage = () => {
                       }}>
                         {teacher.is_active ? 'Faol' : 'Nofaol'}
                       </span>
+                    </td>
+                    <td style={styles.td}>
+                      {teacher.activityInfo ? (
+                        <div>
+                          <span style={{
+                            ...styles.badge,
+                            ...(teacher.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
+                          }}>
+                            {teacher.activityInfo.is_online ? (
+                              <>🟢 Onlayn</>
+                            ) : (
+                              <>🔴 Offline</>
+                            )}
+                          </span>
+                          {!teacher.activityInfo.is_online && teacher.activityInfo.last_active && (
+                            <div style={styles.lastActiveText}>
+                              {activityService.getUserActivityStatus(teacher.activityInfo.last_active).statusText}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{
+                          ...styles.badge,
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280'
+                        }}>
+                          Ma'lumot yo'q
+                        </span>
+                      )}
                     </td>
                     <td style={styles.td}>
                       <button

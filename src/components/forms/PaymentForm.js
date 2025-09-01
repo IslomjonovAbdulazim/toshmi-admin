@@ -274,18 +274,23 @@ const PaymentForm = ({ onClose, onSuccess, preSelectedStudent = null }) => {
       border: '2px solid #e5e7eb',
       borderRadius: '8px',
       cursor: 'pointer',
-      transition: 'all 0.2s'
+      transition: 'all 0.2s',
+      backgroundColor: '#ffffff'
+      // Removed color from here - will be set individually on elements
     },
     paymentMethodSelected: {
       borderColor: '#2563eb',
       backgroundColor: '#eff6ff'
+      // Removed color from here - will be set individually on elements
     },
     paymentMethodIcon: {
       fontSize: '20px'
+      // Color will be set inline
     },
     paymentMethodText: {
       fontSize: '14px',
       fontWeight: '500'
+      // Color will be set inline
     },
     amountDisplay: {
       fontSize: '18px',
@@ -480,19 +485,36 @@ const PaymentForm = ({ onClose, onSuccess, preSelectedStudent = null }) => {
           <div style={styles.inputGroup}>
             <label style={styles.label}>To'lov usuli *</label>
             <div style={styles.paymentMethodGrid}>
-              {paymentMethods.map(method => (
-                <div
-                  key={method.value}
-                  style={{
-                    ...styles.paymentMethodOption,
-                    ...(formData.payment_method === method.value ? styles.paymentMethodSelected : {})
-                  }}
-                  onClick={() => setFormData(prev => ({...prev, payment_method: method.value}))}
-                >
-                  <span style={styles.paymentMethodIcon}>{method.icon}</span>
-                  <span style={styles.paymentMethodText}>{method.label}</span>
-                </div>
-              ))}
+              {paymentMethods.map(method => {
+                const isSelected = formData.payment_method === method.value;
+                const textColor = isSelected ? '#2563eb' : '#6b7280';
+                return (
+                  <div
+                    key={method.value}
+                    style={{
+                      ...styles.paymentMethodOption,
+                      ...(isSelected ? styles.paymentMethodSelected : {}),
+                      color: textColor  // Force color on container too
+                    }}
+                    onClick={() => setFormData(prev => ({...prev, payment_method: method.value}))}
+                  >
+                    <span style={{
+                      ...styles.paymentMethodIcon,
+                      color: textColor,
+                      // Force color override
+                      WebkitTextFillColor: textColor,
+                      textFillColor: textColor
+                    }}>{method.icon}</span>
+                    <span style={{
+                      ...styles.paymentMethodText,
+                      color: textColor,
+                      // Force color override
+                      WebkitTextFillColor: textColor,
+                      textFillColor: textColor
+                    }}>{method.label}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

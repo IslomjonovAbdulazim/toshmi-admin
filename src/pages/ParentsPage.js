@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import ParentForm from '../components/forms/ParentForm';
 import { parentService } from '../services/parentService';
+import { activityService } from '../services/activityService';
 
 const ParentsPage = () => {
   const [parents, setParents] = useState([]);
@@ -11,10 +12,38 @@ const ParentsPage = () => {
   const [editingParent, setEditingParent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activityData, setActivityData] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     fetchParents();
+    connectToActivityFeed();
+    
+    return () => {
+      activityService.disconnect('parents');
+    };
   }, []);
+
+  const connectToActivityFeed = () => {
+    activityService.connect(
+      'parents',
+      (data) => {
+        if (data.type === 'parent_activity_update') {
+          setActivityData(data.data);
+        }
+      },
+      (error) => {
+        console.error('Activity WebSocket error:', error);
+        setIsConnected(false);
+      },
+      () => {
+        setIsConnected(true);
+      },
+      () => {
+        setIsConnected(false);
+      }
+    );
+  };
 
   const fetchParents = async () => {
     try {
@@ -56,7 +85,13 @@ const ParentsPage = () => {
     fetchParents();
   };
 
-  const filteredParents = parents.filter(parent => {
+  const filteredParents = parents.map(parent => {
+    const activityInfo = activityData.find(activity => activity.user_id === parent.id);
+    return {
+      ...parent,
+      activityInfo: activityInfo || null
+    };
+  }).filter(parent => {
     const searchMatch = parent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       parent.phone.includes(searchTerm);
     
@@ -195,6 +230,19 @@ const ParentsPage = () => {
       textAlign: 'center',
       padding: '40px',
       color: '#6b7280'
+    },
+    onlineStatus: {
+      backgroundColor: '#dcfce7',
+      color: '#166534'
+    },
+    offlineStatus: {
+      backgroundColor: '#fef2f2',
+      color: '#dc2626'
+    },
+    lastActiveText: {
+      fontSize: '11px',
+      color: '#6b7280',
+      marginTop: '2px'
     }
   };
 
@@ -294,6 +342,7 @@ const ParentsPage = () => {
                   <th style={styles.th}>To'liq ism</th>
                   <th style={styles.th}>Telefon</th>
                   <th style={styles.th}>Holat</th>
+                  <th style={styles.th}>Faollik holati</th>
                   <th style={styles.th}>Amallar</th>
                 </tr>
               </thead>
@@ -313,6 +362,35 @@ const ParentsPage = () => {
                       }}>
                         {parent.is_active ? 'Faol' : 'Nofaol'}
                       </span>
+                    </td>
+                    <td style={styles.td}>
+                      {parent.activityInfo ? (
+                        <div>
+                          <span style={{
+                            ...styles.badge,
+                            ...(parent.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
+                          }}>
+                            {parent.activityInfo.is_online ? (
+                              <>🟢 Onlayn</>
+                            ) : (
+                              <>🔴 Offline</>
+                            )}
+                          </span>
+                          {!parent.activityInfo.is_online && parent.activityInfo.last_active && (
+                            <div style={styles.lastActiveText}>
+                              {activityService.getUserActivityStatus(parent.activityInfo.last_active).statusText}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{
+                          ...styles.badge,
+                          backgroundColor: '#f3f4f6',
+                          color: '#6b7280'
+                        }}>
+                          Ma'lumot yo'q
+                        </span>
+                      )}
                     </td>
                     <td style={styles.td}>
                       <button
