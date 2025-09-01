@@ -373,8 +373,6 @@ const TeachersPage = () => {
                 <tr>
                   <th style={styles.th}>O'qituvchi</th>
                   <th style={styles.th}>Telefon</th>
-                  <th style={styles.th}>Tayinlovlar</th>
-                  <th style={styles.th}>Holat</th>
                   <th style={styles.th}>Faollik holati</th>
                   <th style={styles.th}>Amallar</th>
                 </tr>
@@ -388,27 +386,6 @@ const TeachersPage = () => {
                     </td>
                     <td style={styles.td}>
                       <div style={styles.phone}>{teacher.phone}</div>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={styles.assignmentsList}>
-                        {teacher.assigned_subjects && teacher.assigned_subjects.length > 0 ? (
-                          teacher.assigned_subjects.map((assignment, index) => (
-                            <span key={index} style={styles.assignmentItem}>
-                              {assignment.group_name} - {assignment.subject_name}
-                            </span>
-                          ))
-                        ) : (
-                          <span style={styles.noAssignments}>Hech qanday tayinlov yo'q</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.badge,
-                        ...(teacher.is_active ? styles.statusActive : styles.statusInactive)
-                      }}>
-                        {teacher.is_active ? 'Faol' : 'Nofaol'}
-                      </span>
                     </td>
                     <td style={styles.td}>
                       {teacher.activityInfo ? (
