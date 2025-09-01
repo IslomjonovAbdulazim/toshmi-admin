@@ -13,7 +13,6 @@ const ParentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activityData, setActivityData] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     fetchParents();
@@ -34,13 +33,6 @@ const ParentsPage = () => {
       },
       (error) => {
         console.error('Activity WebSocket error:', error);
-        setIsConnected(false);
-      },
-      () => {
-        setIsConnected(true);
-      },
-      () => {
-        setIsConnected(false);
       }
     );
   };

@@ -21,7 +21,6 @@ const StudentsPage = () => {
   const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activityData, setActivityData] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     fetchStudents();
@@ -43,13 +42,6 @@ const StudentsPage = () => {
       },
       (error) => {
         console.error('Activity WebSocket error:', error);
-        setIsConnected(false);
-      },
-      () => {
-        setIsConnected(true);
-      },
-      () => {
-        setIsConnected(false);
       }
     );
   };
@@ -161,7 +153,7 @@ const StudentsPage = () => {
       
       return searchMatch && statusMatch && groupMatch && yearMatch;
     });
-  }, [students, searchTerm, statusFilter, groupFilter, yearFilter]);
+  }, [students, searchTerm, statusFilter, groupFilter, yearFilter, activityData]);
 
   const styles = {
     container: {
