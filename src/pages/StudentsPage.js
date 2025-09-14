@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/layout/Layout';
 import StudentForm from '../components/forms/StudentForm';
 import StudentPaymentsModal from '../components/forms/StudentPaymentsModal';
+import ConnectionStatus from '../components/common/ConnectionStatus';
 import { studentService } from '../services/studentService';
 import { groupService } from '../services/groupService';
 import { activityService } from '../services/activityService';
+import { useActivity } from '../contexts/ActivityContext';
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -20,31 +22,18 @@ const StudentsPage = () => {
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [activityData, setActivityData] = useState([]);
+  const activity = useActivity();
 
   useEffect(() => {
     fetchStudents();
     fetchGroups();
-    connectToActivityFeed();
+    activity.connect('students');
     
     return () => {
-      activityService.disconnect('students');
+      activity.disconnect('students');
     };
   }, []);
 
-  const connectToActivityFeed = () => {
-    activityService.connect(
-      'students',
-      (data) => {
-        if (data.type === 'student_activity_update') {
-          setActivityData(data.data);
-        }
-      },
-      (error) => {
-        console.error('Activity WebSocket error:', error);
-      }
-    );
-  };
 
   const fetchStudents = async () => {
     try {
@@ -123,6 +112,7 @@ const StudentsPage = () => {
 
   // Enhanced filtering logic with activity data
   const filteredStudents = useMemo(() => {
+    const activityData = activity.getData('students');
     const studentsWithActivity = students.map(student => {
       const activityInfo = activityData.find(activity => activity.user_id === student.id);
       return {
@@ -153,7 +143,7 @@ const StudentsPage = () => {
       
       return searchMatch && statusMatch && groupMatch && yearMatch;
     });
-  }, [students, searchTerm, statusFilter, groupFilter, yearFilter, activityData]);
+  }, [students, searchTerm, statusFilter, groupFilter, yearFilter, activity]);
 
   const styles = {
     container: {
@@ -379,7 +369,10 @@ const StudentsPage = () => {
     <Layout>
       <div style={styles.container}>
         <div style={styles.header}>
-          <h1 style={styles.title}>O'quvchilar boshqaruvi</h1>
+          <div>
+            <h1 style={styles.title}>O'quvchilar boshqaruvi</h1>
+            <ConnectionStatus channel="students" size="sm" userList={students} />
+          </div>
           <div style={styles.filtersAndAdd}>
             <div style={styles.filtersRow}>
               <select
@@ -563,21 +556,21 @@ const StudentsPage = () => {
                       <td style={styles.td}>
                         {student.activityInfo ? (
                           <div>
-                            <span style={{
-                              ...styles.badge,
-                              ...(student.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
-                            }}>
-                              {student.activityInfo.is_online ? (
-                                <>🟢 Onlayn</>
-                              ) : (
-                                <>🔴 Offline</>
-                              )}
-                            </span>
-                            {!student.activityInfo.is_online && student.activityInfo.last_active && (
-                              <div style={styles.lastActiveText}>
-                                {activityService.getUserActivityStatus(student.activityInfo.last_active).statusText}
-                              </div>
-                            )}
+                            {(() => {
+                              const status = activityService.getUserActivityStatus(student.activityInfo.last_active);
+                              return (
+                                <span style={{
+                                  ...styles.badge,
+                                  ...(status.isOnline ? styles.onlineStatus : styles.offlineStatus)
+                                }}>
+                                  {status.isOnline ? (
+                                    <>🟢 {status.statusText}</>
+                                  ) : (
+                                    <>{status.statusText}</>
+                                  )}
+                                </span>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <span style={{

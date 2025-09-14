@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import TeacherForm from '../components/forms/TeacherForm';
+import ConnectionStatus from '../components/common/ConnectionStatus';
 import { teacherService } from '../services/teacherService';
 import { activityService } from '../services/activityService';
+import { useActivity } from '../contexts/ActivityContext';
 
 const TeachersPage = () => {
   const [teachers, setTeachers] = useState([]);
@@ -12,30 +14,17 @@ const TeachersPage = () => {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [activityData, setActivityData] = useState([]);
+  const activity = useActivity();
 
   useEffect(() => {
     fetchTeachers();
-    connectToActivityFeed();
+    activity.connect('teachers');
     
     return () => {
-      activityService.disconnect('teachers');
+      activity.disconnect('teachers');
     };
   }, []);
 
-  const connectToActivityFeed = () => {
-    activityService.connect(
-      'teachers',
-      (data) => {
-        if (data.type === 'teacher_activity_update') {
-          setActivityData(data.data);
-        }
-      },
-      (error) => {
-        console.error('Activity WebSocket error:', error);
-      }
-    );
-  };
 
   const fetchTeachers = async () => {
     try {
@@ -49,6 +38,8 @@ const TeachersPage = () => {
       setLoading(false);
     }
   };
+
+
 
   const handleAdd = () => {
     setEditingTeacher(null);
@@ -83,8 +74,12 @@ const TeachersPage = () => {
     fetchTeachers();
   };
 
+  const activityData = activity.getData('teachers');
+  
   const filteredTeachers = teachers.map(teacher => {
+    // Find activity info by matching user_id with teacher id
     const activityInfo = activityData.find(activity => activity.user_id === teacher.id);
+    
     return {
       ...teacher,
       activityInfo: activityInfo || null
@@ -282,7 +277,10 @@ const TeachersPage = () => {
     <Layout>
       <div style={styles.container}>
         <div style={styles.header}>
-          <h1 style={styles.title}>O'qituvchilar boshqaruvi</h1>
+          <div>
+            <h1 style={styles.title}>O'qituvchilar boshqaruvi</h1>
+            <ConnectionStatus channel="teachers" size="sm" userList={teachers} />
+          </div>
           <div style={styles.searchAndAdd}>
             <select
               value={statusFilter}
@@ -390,29 +388,29 @@ const TeachersPage = () => {
                     <td style={styles.td}>
                       {teacher.activityInfo ? (
                         <div>
-                          <span style={{
-                            ...styles.badge,
-                            ...(teacher.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
-                          }}>
-                            {teacher.activityInfo.is_online ? (
-                              <>🟢 Onlayn</>
-                            ) : (
-                              <>🔴 Offline</>
-                            )}
-                          </span>
-                          {!teacher.activityInfo.is_online && teacher.activityInfo.last_active && (
-                            <div style={styles.lastActiveText}>
-                              {activityService.getUserActivityStatus(teacher.activityInfo.last_active).statusText}
-                            </div>
-                          )}
+                          {(() => {
+                            const status = activityService.getUserActivityStatus(teacher.activityInfo.last_active);
+                            return (
+                              <span style={{
+                                ...styles.badge,
+                                ...(status.isOnline ? styles.onlineStatus : styles.offlineStatus)
+                              }}>
+                                {status.isOnline ? (
+                                  <>🟢 {status.statusText}</>
+                                ) : (
+                                  <>{status.statusText}</>
+                                )}
+                              </span>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <span style={{
                           ...styles.badge,
-                          backgroundColor: '#f3f4f6',
-                          color: '#6b7280'
+                          backgroundColor: '#fbbf24',
+                          color: '#92400e'
                         }}>
-                          Ma'lumot yo'q
+                          Ma'lumot mavjud emas
                         </span>
                       )}
                     </td>

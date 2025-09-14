@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import ParentForm from '../components/forms/ParentForm';
+import ConnectionStatus from '../components/common/ConnectionStatus';
 import { parentService } from '../services/parentService';
 import { activityService } from '../services/activityService';
+import { useActivity } from '../contexts/ActivityContext';
 
 const ParentsPage = () => {
   const [parents, setParents] = useState([]);
@@ -12,30 +14,17 @@ const ParentsPage = () => {
   const [editingParent, setEditingParent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [activityData, setActivityData] = useState([]);
+  const activity = useActivity();
 
   useEffect(() => {
     fetchParents();
-    connectToActivityFeed();
+    activity.connect('parents');
     
     return () => {
-      activityService.disconnect('parents');
+      activity.disconnect('parents');
     };
   }, []);
 
-  const connectToActivityFeed = () => {
-    activityService.connect(
-      'parents',
-      (data) => {
-        if (data.type === 'parent_activity_update') {
-          setActivityData(data.data);
-        }
-      },
-      (error) => {
-        console.error('Activity WebSocket error:', error);
-      }
-    );
-  };
 
   const fetchParents = async () => {
     try {
@@ -77,6 +66,8 @@ const ParentsPage = () => {
     fetchParents();
   };
 
+  const activityData = activity.getData('parents');
+  
   const filteredParents = parents.map(parent => {
     const activityInfo = activityData.find(activity => activity.user_id === parent.id);
     return {
@@ -242,7 +233,10 @@ const ParentsPage = () => {
     <Layout>
       <div style={styles.container}>
         <div style={styles.header}>
-          <h1 style={styles.title}>Ota-onalar boshqaruvi</h1>
+          <div>
+            <h1 style={styles.title}>Ota-onalar boshqaruvi</h1>
+            <ConnectionStatus channel="parents" size="sm" userList={parents} />
+          </div>
           <div style={styles.searchAndAdd}>
             <select
               value={statusFilter}
@@ -349,21 +343,21 @@ const ParentsPage = () => {
                     <td style={styles.td}>
                       {parent.activityInfo ? (
                         <div>
-                          <span style={{
-                            ...styles.badge,
-                            ...(parent.activityInfo.is_online ? styles.onlineStatus : styles.offlineStatus)
-                          }}>
-                            {parent.activityInfo.is_online ? (
-                              <>🟢 Onlayn</>
-                            ) : (
-                              <>🔴 Offline</>
-                            )}
-                          </span>
-                          {!parent.activityInfo.is_online && parent.activityInfo.last_active && (
-                            <div style={styles.lastActiveText}>
-                              {activityService.getUserActivityStatus(parent.activityInfo.last_active).statusText}
-                            </div>
-                          )}
+                          {(() => {
+                            const status = activityService.getUserActivityStatus(parent.activityInfo.last_active);
+                            return (
+                              <span style={{
+                                ...styles.badge,
+                                ...(status.isOnline ? styles.onlineStatus : styles.offlineStatus)
+                              }}>
+                                {status.isOnline ? (
+                                  <>🟢 {status.statusText}</>
+                                ) : (
+                                  <>{status.statusText}</>
+                                )}
+                              </span>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <span style={{
