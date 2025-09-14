@@ -527,6 +527,7 @@ const StudentsPage = () => {
                     <th style={styles.th}>Guruh</th>
                     <th style={styles.th}>Ota-ona</th>
                     <th style={styles.th}>Bitirish yili</th>
+                    <th style={styles.th}>Tolov</th>
                     <th style={styles.th}>Faollik holati</th>
                     <th style={styles.th}>Amallar</th>
                   </tr>
@@ -552,6 +553,17 @@ const StudentsPage = () => {
                       </td>
                       <td style={styles.td}>
                         {student.graduation_year || 'Belgilanmagan'}
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{
+                          fontWeight: '600',
+                          color: student.monthly_payment > 0 ? '#16a34a' : '#dc2626'
+                        }}>
+                          {student.monthly_payment ? 
+                            `${Number(student.monthly_payment).toLocaleString()} so'm` : 
+                            'To\'lov yo\'q'
+                          }
+                        </div>
                       </td>
                       <td style={styles.td}>
                         {student.activityInfo ? (
@@ -582,7 +594,7 @@ const StudentsPage = () => {
                           </span>
                         )}
                       </td>
-                      <td style={{...styles.td, ...styles.actionsCell}}>
+                      <td style={{...styles.td, ...styles.actionsCell, display: 'flex', flexDirection: 'row', gap: '4px', alignItems: 'center'}}>
                         <button
                           style={{...styles.actionBtn, ...styles.paymentsBtn}}
                           onClick={() => handleViewPayments(student)}
@@ -593,20 +605,42 @@ const StudentsPage = () => {
                           💰 To'lovlar
                         </button>
                         <button
-                          style={{...styles.actionBtn, ...styles.editBtn}}
+                          style={{
+                            ...styles.actionBtn, 
+                            ...styles.editBtn,
+                            width: '32px',
+                            height: '32px',
+                            padding: '6px',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
                           onClick={() => handleEdit(student)}
                           onMouseOver={(e) => e.target.style.backgroundColor = '#d97706'}
                           onMouseOut={(e) => e.target.style.backgroundColor = '#f59e0b'}
+                          title="Tahrirlash"
                         >
-                          Tahrirlash
+                          ✏️
                         </button>
                         <button
-                          style={{...styles.actionBtn, ...styles.deleteBtn}}
+                          style={{
+                            ...styles.actionBtn, 
+                            ...styles.deleteBtn,
+                            width: '32px',
+                            height: '32px',
+                            padding: '6px',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
                           onClick={() => handleDelete(student)}
                           onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
                           onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
+                          title="O'chirish"
                         >
-                          O'chirish
+                          🗑️
                         </button>
                       </td>
                     </tr>
