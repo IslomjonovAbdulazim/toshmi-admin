@@ -3,14 +3,17 @@ import Layout from '../components/layout/Layout';
 import StudentForm from '../components/forms/StudentForm';
 import StudentPaymentsModal from '../components/forms/StudentPaymentsModal';
 import ConnectionStatus from '../components/common/ConnectionStatus';
+import Avatar from '../components/common/Avatar';
 import { studentService } from '../services/studentService';
 import { groupService } from '../services/groupService';
 import { activityService } from '../services/activityService';
 import { useActivity } from '../contexts/ActivityContext';
+import { API_BASE_URL } from '../utils/constants';
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -522,6 +525,7 @@ const StudentsPage = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={styles.th}>Rasm</th>
                     <th style={styles.th}>O'quvchi</th>
                     <th style={styles.th}>Telefon</th>
                     <th style={styles.th}>Guruh</th>
@@ -535,6 +539,13 @@ const StudentsPage = () => {
                 <tbody>
                   {filteredStudents.map((student) => (
                     <tr key={student.id}>
+                      <td style={styles.td}>
+                        <Avatar 
+                          name={student.name}
+                          avatarUrl={student.avatar_url}
+                          size={40}
+                        />
+                      </td>
                       <td style={styles.td}>
                         <div style={styles.studentName}>{student.name}</div>
                       </td>

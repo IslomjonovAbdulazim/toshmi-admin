@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://islomjonovabdulazim-toshmi-backend-0914.twc1.net';
+export const API_BASE_URL = 'https://toshmibackend-production.up.railway.app';
 
 export const ROUTES = {
   LOGIN: '/login',

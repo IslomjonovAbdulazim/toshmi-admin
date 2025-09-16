@@ -52,13 +52,11 @@ class ActivityService {
 
     this.connectionStatus = 'connecting';
     const wsUrl = this.getWebSocketUrl();
-    console.log(`🔌 Connecting to activity endpoint: ${wsUrl}`);
     
     try {
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = (event) => {
-        console.log(`✅ Connected to activity endpoint`);
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
         this.lastDataReceived = Date.now();
@@ -73,19 +71,15 @@ class ActivityService {
 
       socket.onmessage = (event) => {
         try {
-          console.log('🔥 RAW WebSocket message received:', event.data);
           const data = JSON.parse(event.data);
-          console.log('🔥 Parsed WebSocket data:', data);
           this.lastDataReceived = Date.now();
           
           if (data.type === 'pong') {
-            console.log(`💓 Heartbeat response`);
             return;
           }
           
           // Cache all activity data (no role filtering since role field not in response)
           if (data.data && Array.isArray(data.data)) {
-            console.log(`✅ Received ${data.data.length} activity records`);
             // Store all data - we'll filter on frontend based on user IDs
             this.cachedData.all = data.data;
             
@@ -93,7 +87,6 @@ class ActivityService {
             ['students', 'teachers', 'parents'].forEach(channel => {
               this.listeners[channel].forEach(listener => {
                 try {
-                  console.log(`📤 Notifying ${channel} listeners with ${data.data.length} records`);
                   listener({ 
                     type: `${channel.slice(0, -1)}_activity_update`, 
                     data: data.data,
@@ -120,7 +113,6 @@ class ActivityService {
       };
 
       socket.onclose = (event) => {
-        console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason}`);
         this.connectionStatus = 'disconnected';
         this.socket = null;
         this.stopHeartbeat();
@@ -131,15 +123,13 @@ class ActivityService {
         if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect(channel, onMessage, onError, onOpen, onClose);
         } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error(`❌ Max reconnection attempts reached`);
-          this.connectionStatus = 'failed';
+              this.connectionStatus = 'failed';
         }
       };
 
       this.socket = socket;
       return socket;
     } catch (err) {
-      console.error(`❌ Failed to create WebSocket:`, err);
       this.connectionStatus = 'error';
       if (onError) onError(err);
       return null;
@@ -155,8 +145,7 @@ class ActivityService {
         // Check if we haven't received data in a while
         const timeSinceLastData = Date.now() - this.lastDataReceived;
         if (timeSinceLastData > 90000) { // 1.5 minutes
-          console.warn(`⚠️ No data received for ${timeSinceLastData}ms, connection may be stale`);
-        }
+          }
       }
     }, 30000); // Send heartbeat every 30 seconds
   }
@@ -177,7 +166,6 @@ class ActivityService {
     this.reconnectAttempts++;
     this.connectionStatus = 'reconnecting';
 
-    console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     this.reconnectInterval = setTimeout(() => {
       this.connect(channel, onMessage, onError, onOpen, onClose);
@@ -186,7 +174,6 @@ class ActivityService {
 
   disconnect(channel = null) {
     if (channel) {
-      console.log(`🔌 Removing listeners for ${channel}`);
       this.listeners[channel] = [];
       this.cachedData[channel] = [];
       
@@ -196,7 +183,6 @@ class ActivityService {
         this._disconnectSocket();
       }
     } else {
-      console.log(`🔌 Manually disconnecting from activity endpoint`);
       this._disconnectSocket();
     }
   }
@@ -256,7 +242,6 @@ class ActivityService {
   }
 
   disconnectAll() {
-    console.log('🔌 Disconnecting all WebSocket connections');
     this._disconnectSocket();
   }
 
@@ -277,13 +262,6 @@ class ActivityService {
     
     const diffInSeconds = Math.floor((now - lastActiveDate) / 1000);
     
-    // Debug logging (remove in production)
-    console.log('Debug time calculation:', {
-      now: now.toISOString(),
-      lastActive: lastActive,
-      lastActiveDate: lastActiveDate.toISOString(),
-      diffInSeconds: diffInSeconds
-    });
     
     // Online if active within 60 seconds
     if (diffInSeconds <= 60) {

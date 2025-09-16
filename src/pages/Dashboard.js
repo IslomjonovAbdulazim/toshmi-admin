@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
+import ActivityMonitor from '../components/common/ActivityMonitor';
+import WebSocketStatus from '../components/common/WebSocketStatus';
 import { systemService } from '../services/systemService';
 
 const Dashboard = () => {
@@ -206,10 +208,15 @@ const Dashboard = () => {
     <Layout>
       <div style={styles.container}>
         <div style={styles.welcomeCard}>
-          <h1 style={styles.welcomeTitle}>Maktab Boshqaruv Tizimi</h1>
-          <p style={styles.welcomeSubtitle}>
-            Tizim statistikasi va umumiy ma'lumotlar
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <h1 style={styles.welcomeTitle}>Maktab Boshqaruv Tizimi</h1>
+              <p style={styles.welcomeSubtitle}>
+                Tizim statistikasi va umumiy ma'lumotlar
+              </p>
+            </div>
+            <WebSocketStatus showText={true} compact={false} />
+          </div>
         </div>
 
         <div style={styles.statsGrid}>
@@ -227,6 +234,8 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
+
+        <ActivityMonitor />
 
         <div style={styles.summaryGrid}>
           <div style={styles.summaryCard}>

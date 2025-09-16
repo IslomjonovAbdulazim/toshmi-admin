@@ -38,7 +38,6 @@ const PaymentsPage = () => {
       setLoading(true);
       setError('');
       
-      console.log('Fetching all payments for filtering and pagination');
       
       // Get ALL payments first (for proper filtering)
       const allPaymentsResponse = await paymentService.getAllPayments({
@@ -46,7 +45,6 @@ const PaymentsPage = () => {
       });
       const allPaymentsData = allPaymentsResponse.data;
       
-      console.log('All payments data:', allPaymentsData);
 
       // Sort by date (newest first)
       allPaymentsData.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
@@ -64,7 +62,6 @@ const PaymentsPage = () => {
       const endIndex = startIndex + pageSize;
       const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
       
-      console.log('Filtered payments:', filteredPayments.length, 'Paginated:', paginatedPayments.length);
       setPayments(paginatedPayments);
 
     } catch (err) {
@@ -125,7 +122,6 @@ const PaymentsPage = () => {
   };
 
   const calculateAllTimeStats = (paymentsData) => {
-    console.log('Calculating all-time stats for:', paymentsData);
     
     if (!paymentsData || paymentsData.length === 0) {
       setAllTimeStats({ 
@@ -159,12 +155,10 @@ const PaymentsPage = () => {
       methodBreakdown
     };
     
-    console.log('Calculated all-time stats:', newStats);
     setAllTimeStats(newStats);
   };
 
   const calculateFilteredStats = (filteredPayments) => {
-    console.log('Calculating filtered stats for:', filteredPayments);
     
     if (!filteredPayments || filteredPayments.length === 0) {
       setFilteredStats({ 
@@ -198,7 +192,6 @@ const PaymentsPage = () => {
       methodBreakdown
     };
     
-    console.log('Calculated filtered stats:', newStats);
     setFilteredStats(newStats);
   };
 

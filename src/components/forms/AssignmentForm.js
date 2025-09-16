@@ -109,7 +109,6 @@ const AssignmentForm = ({ assignmentId, onClose, onSuccess, preSelectedData = nu
 
       await assignmentService.assignTeacher(assignmentData);
       
-      console.log('Assignment successful');
       onSuccess();
     } catch (err) {
       console.error('Assignment error:', err);

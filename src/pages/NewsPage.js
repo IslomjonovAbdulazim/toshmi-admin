@@ -22,7 +22,6 @@ const NewsPage = () => {
       setLoading(true);
       setError('');
       const response = await newsService.getAll();
-      console.log('Fetched news:', response.data); // Debug log
       setNews(response.data);
     } catch (err) {
       setError('Yangiliklar ro\'yxatini olishda xatolik');

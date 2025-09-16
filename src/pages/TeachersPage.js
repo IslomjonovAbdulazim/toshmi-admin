@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import TeacherForm from '../components/forms/TeacherForm';
 import ConnectionStatus from '../components/common/ConnectionStatus';
+import Avatar from '../components/common/Avatar';
 import { teacherService } from '../services/teacherService';
 import { activityService } from '../services/activityService';
 import { useActivity } from '../contexts/ActivityContext';
+import { API_BASE_URL } from '../utils/constants';
 
 const TeachersPage = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
@@ -31,6 +34,15 @@ const TeachersPage = () => {
       setLoading(true);
       setError('');
       const response = await teacherService.getAll();
+      
+      // Only log teachers who have avatar URLs
+      const teachersWithAvatars = response.data.filter(teacher => teacher.avatar_url);
+      if (teachersWithAvatars.length > 0) {
+        console.log(`Found ${teachersWithAvatars.length} teachers with avatars:`, 
+          teachersWithAvatars.map(t => ({ name: t.name, avatar_url: t.avatar_url }))
+        );
+      }
+      
       setTeachers(response.data);
     } catch (err) {
       setError('O\'qituvchilar ro\'yxatini olishda xatolik');
@@ -369,6 +381,7 @@ const TeachersPage = () => {
             <table style={styles.table}>
               <thead>
                 <tr>
+                  <th style={styles.th}>Rasm</th>
                   <th style={styles.th}>O'qituvchi</th>
                   <th style={styles.th}>Telefon</th>
                   <th style={styles.th}>Faollik holati</th>
@@ -378,6 +391,13 @@ const TeachersPage = () => {
               <tbody>
                 {filteredTeachers.map((teacher) => (
                   <tr key={teacher.id}>
+                    <td style={styles.td}>
+                      <Avatar 
+                        name={teacher.name}
+                        avatarUrl={teacher.avatar_url}
+                        size={40}
+                      />
+                    </td>
                     <td style={styles.td}>
                       <div style={styles.teacherName}>{teacher.name}</div>
                       <div style={styles.teacherRole}>O'qituvchi</div>

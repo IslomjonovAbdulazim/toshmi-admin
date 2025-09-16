@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import ParentForm from '../components/forms/ParentForm';
 import ConnectionStatus from '../components/common/ConnectionStatus';
+import Avatar from '../components/common/Avatar';
 import { parentService } from '../services/parentService';
 import { activityService } from '../services/activityService';
 import { useActivity } from '../contexts/ActivityContext';
+import { API_BASE_URL } from '../utils/constants';
 
 const ParentsPage = () => {
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingParent, setEditingParent] = useState(null);
@@ -31,6 +34,15 @@ const ParentsPage = () => {
       setLoading(true);
       setError('');
       const response = await parentService.getAll();
+      
+      // Only log parents who have avatar URLs
+      const parentsWithAvatars = response.data.filter(parent => parent.avatar_url);
+      if (parentsWithAvatars.length > 0) {
+        console.log(`Found ${parentsWithAvatars.length} parents with avatars:`, 
+          parentsWithAvatars.map(p => ({ name: p.name, avatar_url: p.avatar_url }))
+        );
+      }
+      
       setParents(response.data);
     } catch (err) {
       setError('Ota-onalar ro\'yxatini olishda xatolik');
@@ -325,6 +337,7 @@ const ParentsPage = () => {
             <table style={styles.table}>
               <thead>
                 <tr>
+                  <th style={styles.th}>Rasm</th>
                   <th style={styles.th}>To'liq ism</th>
                   <th style={styles.th}>Telefon</th>
                   <th style={styles.th}>Faollik holati</th>
@@ -334,6 +347,13 @@ const ParentsPage = () => {
               <tbody>
                 {filteredParents.map((parent) => (
                   <tr key={parent.id}>
+                    <td style={styles.td}>
+                      <Avatar 
+                        name={parent.name}
+                        avatarUrl={parent.avatar_url}
+                        size={40}
+                      />
+                    </td>
                     <td style={styles.td}>
                       <div style={styles.parentName}>{parent.name}</div>
                     </td>

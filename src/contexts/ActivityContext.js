@@ -35,14 +35,11 @@ export function ActivityProvider({ children }) {
         updateOnlineCounts();
       },
       (error) => {
-        console.error(`Activity connection error for ${channel}:`, error);
       },
       () => {
-        console.log(`Connected to ${channel} activity`);
         updateOnlineCounts();
       },
       () => {
-        console.log(`Disconnected from ${channel} activity`);
       }
     );
   };
