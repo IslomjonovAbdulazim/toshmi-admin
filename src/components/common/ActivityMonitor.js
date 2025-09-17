@@ -202,28 +202,8 @@ const ActivityMonitor = () => {
       );
     }
 
-    if (activityData.length === 0) {
-      return (
-        <div style={styles.emptyState}>
-          Hech qanday faol foydalanuvchi topilmadi
-        </div>
-      );
-    }
-
-    return (
-      <div style={styles.content}>
-        <div style={styles.activityList}>
-          {activityData.map((activity) => (
-            <div key={activity.id} style={styles.activityItem}>
-              <span style={styles.phone}>{activity.phone}</span>
-              <span style={styles.lastActive}>
-                {formatLastActive(activity.last_active)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    // Don't render the user list - just return null for content
+    return null;
   };
 
   return (

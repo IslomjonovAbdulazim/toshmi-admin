@@ -90,7 +90,7 @@ const TeachersPage = () => {
   
   const filteredTeachers = teachers.map(teacher => {
     // Find activity info by matching user_id with teacher id
-    const activityInfo = activityData.find(activity => activity.user_id === teacher.id);
+    const activityInfo = activityData.find(activity => activity.phone === teacher.phone);
     
     return {
       ...teacher,

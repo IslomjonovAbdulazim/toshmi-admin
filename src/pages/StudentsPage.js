@@ -117,7 +117,7 @@ const StudentsPage = () => {
   const filteredStudents = useMemo(() => {
     const activityData = activity.getData('students');
     const studentsWithActivity = students.map(student => {
-      const activityInfo = activityData.find(activity => activity.user_id === student.id);
+      const activityInfo = activityData.find(activity => activity.phone === student.phone);
       return {
         ...student,
         activityInfo: activityInfo || null

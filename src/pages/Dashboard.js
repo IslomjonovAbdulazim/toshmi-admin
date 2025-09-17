@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
-import ActivityMonitor from '../components/common/ActivityMonitor';
 import WebSocketStatus from '../components/common/WebSocketStatus';
 import { systemService } from '../services/systemService';
 
@@ -235,7 +234,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <ActivityMonitor />
 
         <div style={styles.summaryGrid}>
           <div style={styles.summaryCard}>

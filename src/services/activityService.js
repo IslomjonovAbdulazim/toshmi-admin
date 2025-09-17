@@ -263,8 +263,8 @@ class ActivityService {
     const diffInSeconds = Math.floor((now - lastActiveDate) / 1000);
     
     
-    // Online if active within 60 seconds
-    if (diffInSeconds <= 60) {
+    // Online if active within 10 seconds
+    if (diffInSeconds <= 10) {
       return { 
         isOnline: true, 
         statusText: 'Onlayn' 

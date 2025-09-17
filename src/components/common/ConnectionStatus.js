@@ -14,7 +14,7 @@ const ConnectionStatus = ({ channel, showText = true, size = 'sm', userList = []
       const activityInfo = activityData.find(activityItem => activityItem.user_id === user.id);
       if (activityInfo && activityInfo.last_active) {
         const timeDiff = Date.now() - new Date(activityInfo.last_active).getTime();
-        return timeDiff <= 60000; // 60 seconds threshold
+        return timeDiff <= 10000; // 10 seconds threshold
       }
       return false;
     }).length;

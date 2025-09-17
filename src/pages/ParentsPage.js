@@ -81,7 +81,7 @@ const ParentsPage = () => {
   const activityData = activity.getData('parents');
   
   const filteredParents = parents.map(parent => {
-    const activityInfo = activityData.find(activity => activity.user_id === parent.id);
+    const activityInfo = activityData.find(activity => activity.phone === parent.phone);
     return {
       ...parent,
       activityInfo: activityInfo || null
