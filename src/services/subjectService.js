@@ -16,6 +16,7 @@ export const subjectService = {
   update: async (id, data) => {
     return await api.put(`/admin/subjects/${id}`, data);
   },
+  
 
   delete: async (id) => {
     return await api.delete(`/admin/subjects/${id}`);
